@@ -1,0 +1,9 @@
+numpy
+scipy
+pandas
+tqdm
+matplotlib
+matplotlib-inline
+scikit-learn
+ucimlrepo
+tabulate
