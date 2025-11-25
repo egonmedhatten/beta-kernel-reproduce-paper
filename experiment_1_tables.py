@@ -298,7 +298,7 @@ if __name__ == "__main__":
     else:
         file_path = 'data/experiment1/simulation_results_full.csv'
         
-    latex_output_path = "data/experiment1/tables"
+    latex_output_path = 'tables' #"data/experiment1/tables"
     os.makedirs(latex_output_path, exist_ok=True)
     
     method_order = [

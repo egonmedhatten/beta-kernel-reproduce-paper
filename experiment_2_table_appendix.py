@@ -130,6 +130,7 @@ def generate_appendix_tables(csv_path, output_dir):
 if __name__ == "__main__":
     # Adjust paths as needed
     csv_file = 'data/experiment2/experiment_2_summary.csv' # or 'data/experiment2/experiment_2_summary.csv'
-    output_folder = 'data/experiment2/tables'
-    
+    output_folder = 'tables'
+    os.makedirs(output_folder, exist_ok=True)
+
     generate_appendix_tables(csv_file, output_folder)

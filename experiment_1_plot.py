@@ -21,6 +21,7 @@ import seaborn as sns
 import re
 import warnings
 from tqdm.auto import tqdm
+import os
 
 # --- Matplotlib Setup ---
 plt.switch_backend('Agg')
@@ -714,12 +715,15 @@ def main():
     """
     # --- Configuration ---
     INPUT_FILE = "data/experiment1/simulation_results_full.csv"
-    OUTPUT_LSCV_PLOT = 'data/experiment1/plots/LSCV_Score_vs_N.pdf'
-    OUTPUT_ISE_PLOT = 'data/experiment1/plots/ISE_Score_vs_N.pdf'
-    OUTPUT_TIME_PLOT = 'data/experiment1/plots/Comp_Time_vs_N.pdf'
-    OUTPUT_BW_PLOT = 'data/experiment1/plots/Bandwidth_vs_N_NiceDists.pdf'
-    OUTPUT_INTEGRAL_PLOT = 'data/experiment1/plots/IntegralError_vs_N.pdf'
-    OUTPUT_INTEGRAL_VS_H_PLOT = 'data/experiment1/plots/IntegralError_vs_H.pdf'
+
+    OUTPUT_DIR = 'plots' #'data/experiment1/plots'
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    OUTPUT_LSCV_PLOT = f'{OUTPUT_DIR}/LSCV_Score_vs_N.pdf'
+    OUTPUT_ISE_PLOT = f'{OUTPUT_DIR}/ISE_Score_vs_N.pdf'
+    OUTPUT_TIME_PLOT = f'{OUTPUT_DIR}/Comp_Time_vs_N.pdf'
+    OUTPUT_BW_PLOT = f'{OUTPUT_DIR}/Bandwidth_vs_N_NiceDists.pdf'
+    OUTPUT_INTEGRAL_PLOT = f'{OUTPUT_DIR}/IntegralError_vs_N.pdf'
+    OUTPUT_INTEGRAL_VS_H_PLOT = f'{OUTPUT_DIR}/IntegralError_vs_H.pdf'
 
     
     # --- Emphasis Configuration ---

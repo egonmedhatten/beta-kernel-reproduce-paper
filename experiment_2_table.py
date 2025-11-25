@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 
 def format_time(t):
     """Format time: <0.0001 as <0.0001, small as 0.xxxx, large as 12.3"""
@@ -88,4 +89,6 @@ def generate_latex_file(csv_path, output_path):
 
 if __name__ == "__main__":
     # Run with your specific filename
-    generate_latex_file('data/experiment2/experiment_2_summary.csv', 'data/experiment2/tables/experiment_2_table.tex')
+    latex_output_path = 'tables' #"data/experiment1/tables"
+    os.makedirs(latex_output_path, exist_ok=True)
+    generate_latex_file('data/experiment2/experiment_2_summary.csv', f'{latex_output_path}/experiment_2_table.tex')

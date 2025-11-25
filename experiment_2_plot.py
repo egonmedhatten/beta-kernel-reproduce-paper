@@ -1,18 +1,12 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-plt.rcParams['svg.fonttype'] = 'none'
-from matplotlib_inline.backend_inline import set_matplotlib_formats
-# Set the desired output format
-set_matplotlib_formats('svg')
 import seaborn as sns
 from ucimlrepo import fetch_ucirepo
 import warnings
 import os
 
 # --- Imports Moved to Top ---
-# This script MUST be in the same directory as your KDE.py and KDE_Gauss.py
-# files, as it needs to import them to run the analysis.
 try:
     from KDE import BetaKernelKDE
     from KDE_Gauss import GaussianKDE
@@ -22,27 +16,40 @@ except ImportError:
     exit()
 # --- End Imports ---
 
-
-# --- Consistent Plot Styling ---
-
-# 1. Add the same seaborn theme from Experiment 1
+# --- 1. Publication Grade Styling ---
 plt.switch_backend('Agg')
+
+# Use a clean sans-serif font (Arial/Helvetica are standard for papers)
+plt.rcParams.update({
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Arial", "DejaVu Sans", "Liberation Sans", "Bitstream Vera Sans"],
+    "font.size": 12,
+    "axes.titlesize": 14,
+    "axes.labelsize": 12,
+    "legend.fontsize": 10,
+    "xtick.labelsize": 10,
+    "ytick.labelsize": 10,
+    "svg.fonttype": "none", # Text editable in Illustrator/Inkscape
+    "figure.dpi": 300,
+    "savefig.dpi": 300,
+})
+
 sns.set_theme(
     context='paper',
-    style='whitegrid',
+    style='ticks', # 'ticks' is often cleaner than 'whitegrid' for publication
     palette='deep',
-    font_scale=1.1,
-    rc={
-        "grid.linestyle": ":",
-        "grid.color": "0.8",
-        "axes.spines.right": False,
-        "axes.spines.top": False,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-    }
+    rc={"axes.spines.right": False, "axes.spines.top": False}
 )
 
-# 2. Define the same method labels and types from Experiment 1
+# --- 2. Data Mappings ---
+
+# Map variable names to Human-Readable Titles
+DATASET_TITLES = {
+    "PctKids2Par": "Children with Two Parents (%)",
+    "PctPopUnderPov": "Population Under Poverty (%)",
+    "PctVacantBoarded": "Vacant & Boarded Housing (%)"
+}
+
 method_rename_map = {
     "BETA_ROT": "Beta (Ref)",
     "BETA_LSCV": "Beta (LSCV)",
@@ -52,65 +59,40 @@ method_rename_map = {
     "REFLECT_LSCV": "Reflect (LSCV)",
 }
 
-def selector_type(method):
-    if "LSCV" in method: return "Slow (LSCV)"
-    return "Fast (Rule)"
-
-# 3. Define the style and color mappings to match Experiment 1
+# Define colors (High contrast)
+# Using a slightly customized palette to ensure the "Ref" stands out
 palette = sns.color_palette('deep', 10)
-
-# Map labels to the same colors used in Experiment 1's seaborn plots
 COLOR_MAP = {
-    "Beta (Ref)": palette[3], # Red
-    "Beta (LSCV)": palette[0],          # Blue
-    "Logit (Silverman)": palette[2],    # Green
-    "Logit (LSCV)": palette[4],         # Purple
-    "Reflect (Silverman)": palette[1],  # Orange
-    "Reflect (LSCV)": palette[5],       # Brown
+    "Beta (Ref)": "#d62728",        # Strong Red for the proposed method
+    "Beta (LSCV)": palette[0],      # Blue
+    "Logit (Silverman)": palette[2],# Green
+    "Logit (LSCV)": palette[4],     # Purple
+    "Reflect (Silverman)": palette[1], # Orange
+    "Reflect (LSCV)": palette[5],   # Brown
 }
 
-# Map selector types to the same linestyles from Experiment 1
-# (This plot only uses ax.plot, so the simple STRING map is correct)
-STYLE_MAP = {
-    "Fast (Rule)": "--",
-    "Slow (LSCV)": ":",
-}
+# --- IMPORTANT: Style Strategy ---
+# Proposed Method -> Solid Line (Easiest to read)
+# Rule-of-thumb competitors -> Dashed
+# LSCV competitors -> Dotted
+def get_style_kwargs(method_name):
+    if method_name == "BETA_ROT":
+        return {"linestyle": "-", "linewidth": 2.5, "zorder": 10, "alpha": 1.0}
+    elif "LSCV" in method_name:
+        return {"linestyle": ":", "linewidth": 1.8, "zorder": 5, "alpha": 0.9}
+    else:
+        return {"linestyle": "--", "linewidth": 1.8, "zorder": 6, "alpha": 0.9}
 
-# 4. Define the (simpler) config for KDE classes
 METHOD_CONFIG = {
-    "BETA_ROT": {
-        "class": BetaKernelKDE,
-        "init_args": {"bandwidth": "MISE_rule", "verbose": 0},
-    },
-    "BETA_LSCV": {
-        "class": BetaKernelKDE,
-        "init_args": {"bandwidth": "LSCV", "verbose": 0},
-    },
-    "LOGIT_SILV": {
-        "class": GaussianKDE,
-        "init_args": {"bandwidth": "silverman", "method": "logit", "verbose": 0},
-    },
-    "LOGIT_LSCV": {
-        "class": GaussianKDE,
-        "init_args": {"bandwidth": "LSCV", "method": "logit", "verbose": 0},
-    },
-    "REFLECT_SILV": {
-        "class": GaussianKDE,
-        "init_args": {"bandwidth": "silverman", "method": "reflect", "verbose": 0},
-    },
-    "REFLECT_LSCV": {
-        "class": GaussianKDE,
-        "init_args": {"bandwidth": "LSCV", "method": "reflect", "verbose": 0},
-    },
+    "BETA_ROT": {"class": BetaKernelKDE, "init_args": {"bandwidth": "MISE_rule", "verbose": 0}},
+    "BETA_LSCV": {"class": BetaKernelKDE, "init_args": {"bandwidth": "LSCV", "verbose": 0}},
+    "LOGIT_SILV": {"class": GaussianKDE, "init_args": {"bandwidth": "silverman", "method": "logit", "verbose": 0}},
+    "LOGIT_LSCV": {"class": GaussianKDE, "init_args": {"bandwidth": "LSCV", "method": "logit", "verbose": 0}},
+    "REFLECT_SILV": {"class": GaussianKDE, "init_args": {"bandwidth": "silverman", "method": "reflect", "verbose": 0}},
+    "REFLECT_LSCV": {"class": GaussianKDE, "init_args": {"bandwidth": "LSCV", "method": "reflect", "verbose": 0}},
 }
-# --- End Consistent Styling ---
-
 
 def fetch_data():
-    """
-    Fetches the UCI Communities and Crime dataset.
-    Returns a dictionary of the three data vectors.
-    """
     try:
         communities_crime = fetch_ucirepo(id=183)
         X = communities_crime.data.features
@@ -122,151 +104,122 @@ def fetch_data():
         return datasets
     except Exception as e:
         print(f"Error fetching data: {e}")
-        print("Please ensure 'ucimlrepo' is installed: pip install ucimlrepo")
         return None
 
 def main():
-    """
-    Loads experiment 2 results and generates the 1x3
-    qualitative fit plot for the paper.
-    """
-    print("Loading results from data/experiment2/experiment_2_summary.csv...")
+    print("Loading results...")
     try:
         df_summary = pd.read_csv("data/experiment2/experiment_2_summary.csv")
     except FileNotFoundError:
-        print("Error: 'data/experiment2/experiment_2_summary.csv' not found.")
+        print("Error: CSV not found.")
         return
 
-    print("Fetching raw data from UCI repository...")
     datasets = fetch_data()
-    if datasets is None:
-        return
+    if datasets is None: return
 
     dataset_names = list(datasets.keys())
     
-    # --- MODIFICATION: Change to a 3x1 vertical layout ---
-    fig, axes = plt.subplots(3, 1, figsize=(8, 12)) # Tall, narrower figure
-    axes = axes.flatten()
-    # --- END MODIFICATION ---
+    # 6x10 is a good ratio for a 3-row vertical stack in a standard paper column
+    fig, axes = plt.subplots(3, 1, figsize=(6, 10), sharex=True) 
+    
+    # Evaluation grid
+    x_plot = np.linspace(0, 1, 1000, endpoint=True)
 
-    print("Generating plots for each dataset...")
+    print("Generating plots...")
     for i, data_name in enumerate(dataset_names):
         ax = axes[i]
         data_vector = datasets[data_name]
+        df_data = df_summary[df_summary['dataset'] == data_name]
 
-        # 1. Plot histogram of the raw data
+        # 1. Plot Histogram (Stepfilled is cleaner for background data)
         ax.hist(
             data_vector,
-            bins=30,
+            bins=40,
             density=True,
-            alpha=0.4,
+            histtype='stepfilled', # Cleaner than bars
+            alpha=0.2,             # Subtle background
+            color="black",
+            edgecolor='none',
             label="Data Histogram",
-            color="0.7", # Use a lighter gray
+            zorder=1
         )
 
-        # 2. Get the results for this dataset
-        df_data = df_summary[df_summary['dataset'] == data_name]
-        
-        # Plot points for the PDF
-        x_plot = np.linspace(0, 1, 1000, endpoint=True)
-
-        # 3. Fit and plot each method
+        # 2. Plot Methods
         for _, row in df_data.iterrows():
             method_name = row['method']
             bandwidth = row['bandwidth']
             
-            if method_name not in METHOD_CONFIG:
-                continue
+            if method_name not in METHOD_CONFIG: continue
 
-            # --- Apply consistent styling ---
             config = METHOD_CONFIG[method_name]
-            
-            # Get consistent labels, colors, and styles
-            label = method_rename_map.get(method_name, method_name)
-            sel_type = selector_type(method_name)
-            color = COLOR_MAP.get(label, "black")
-            style = STYLE_MAP.get(sel_type, "-")
-            
-            # Apply emphasis to the proposed rule
-            if method_name == "BETA_ROT":
-                lw = 3.0
-                zorder = 10
-                # Use the 'emphasis' style from Exp1
-                style = "--"
-            else:
-                lw = 2.0
-                zorder = 5
-            
-            plot_label = f"{label}"# (h={bandwidth:.3f})"
-            # --- End styling ---
+            label_text = method_rename_map.get(method_name, method_name)
+            color = COLOR_MAP.get(label_text, "black")
+            style_kwargs = get_style_kwargs(method_name)
             
             try:
-                # Initialize the correct KDE class with the
-                # bandwidth found during the experiment
-                kde = config['class'](
-                    **config['init_args']
-                )
-
+                kde = config['class'](**config['init_args'])
                 kde.bandwidth = bandwidth
-                
-                # Fit the model on the full raw data
                 kde.fit(data_vector)
-                
-                # Get PDF values
                 pdf_plot = kde.pdf(x_plot)
 
-                # Plot with new styles
                 ax.plot(x_plot, pdf_plot, 
-                        label=plot_label, 
+                        label=label_text, 
                         color=color,
-                        linestyle=style,
-                        linewidth=lw,
-                        zorder=zorder)
+                        **style_kwargs)
 
             except Exception as e:
-                print(f"Could not plot {method_name} for {data_name}: {e}")
+                print(f"Skipping {method_name}: {e}")
 
-        # --- MODIFICATION: Adjust titles and labels for 3x1 layout ---
-        ax.set_title(f"{data_name}", fontsize=14)
+        # 3. Axis Styling per subplot
+        readable_title = DATASET_TITLES.get(data_name, data_name)
+        ax.set_title(readable_title, fontweight='bold', pad=10)
+        ax.set_ylabel("Density")
         
-        # Only add X-axis label to the bottom-most plot
-        if i == len(dataset_names) - 1:
-            ax.set_xlabel("Value")
+        # Add subtle grid
+        ax.grid(True, linestyle=':', alpha=0.6, color='gray', linewidth=0.7)
         
-        # Add Y-axis label to the middle plot for centering
-        if i == 1:
-            ax.set_ylabel("Density")
-        
+        # Ensure 0 and 1 are strictly enforced limits
         ax.set_xlim(0, 1)
         ax.set_ylim(bottom=0)
-        # --- END MODIFICATION ---
 
+    # Set X-label only on the bottom plot
+    axes[-1].set_xlabel("Feature Value (Normalized)")
+
+    # Create a unified legend
+    # Get handles/labels from the first plot (assuming all plots have same methods)
     handles, labels = axes[0].get_legend_handles_labels()
     
-    # --- MODIFICATION: Adjust legend for 3x1 layout ---
-    # fig.suptitle("Qualitative PDF Fits on Real-World Data", fontsize=16)
+    # Reorder legend to put Histogram first, then Beta Ref, then others
+    # This ensures logical reading order
+    order_map = {lbl: i for i, lbl in enumerate(labels)}
+    # Define priority: Histogram -> Beta (Ref) -> Others
+    def get_priority(lbl):
+        if "Histogram" in lbl: return 0
+        if "Beta (Ref)" in lbl: return 1
+        return 2
+        
+    # Sort handles and labels
+    sorted_pairs = sorted(zip(handles, labels), key=lambda x: (get_priority(x[1]), x[1]))
+    handles, labels = zip(*sorted_pairs)
+
     fig.legend(handles, labels, 
                loc='lower center', 
-               ncol=3, # 3 columns fits well under this layout
-               bbox_to_anchor=(0.5, -0.05), # Adjust anchor for new shape
-               frameon=False) 
+               bbox_to_anchor=(0.5, -0.02),
+               ncol=3, 
+               frameon=False,
+               columnspacing=1.5)
     
-    # Adjust for legend and suptitle
-    fig.tight_layout(rect=[0, 0.05, 1, 0.95]) # Give a bit more room at the bottom
-    # --- END MODIFICATION ---
+    plt.tight_layout()
     
-    output_filename = "data/experiment2/plots/experiment_2_visual_fits.pdf"
-    plt.savefig(output_filename, dpi=300, bbox_inches='tight')
+    # Add extra space at bottom for legend
+    plt.subplots_adjust(bottom=0.12)
+
+    OUTPUT_DIR = 'plots'
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    output_filename = f"{OUTPUT_DIR}/experiment_2_visual_fits.pdf"
+    plt.savefig(output_filename, bbox_inches='tight') # bbox_inches='tight' ensures legend isn't cut off
     print(f"\nSuccessfully saved figure to {output_filename}")
 
-
 if __name__ == "__main__":
-    # Suppress warnings for cleaner output
-    warnings.filterwarnings("ignore", category=UserWarning)
-    warnings.filterwarnings("ignore", category=FutureWarning)
-    warnings.filterwarnings("ignore", category=RuntimeWarning)
-    
-    # Ensure the plot directory exists
-    os.makedirs("data/experiment2/plots", exist_ok=True)
-    
+    warnings.filterwarnings("ignore")
     main()

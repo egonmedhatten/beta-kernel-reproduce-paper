@@ -7,3 +7,5 @@ matplotlib-inline
 scikit-learn
 ucimlrepo
 tabulate
+Jinja2
+seaborn
