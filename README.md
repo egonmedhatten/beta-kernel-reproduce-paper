@@ -1,0 +1,2 @@
+# To do
+Write instructions on how to reproduce all tables and figures, as well as how to rerun the experiments. Remark that they take a while to run (approximately 32 h on the JTH workstation using 32 CPU cores in parallell).
