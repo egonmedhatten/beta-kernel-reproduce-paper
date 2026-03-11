@@ -107,7 +107,7 @@ def get_stats_for_metric(df_raw, methods, ref_method, metric_name, metric_col):
                 else:
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", category=RuntimeWarning)
-                        t_stat, p_val = stats.ttest_rel(paired_df.iloc[:, 0], paired_df.iloc[:, 1])
+                        t_stat, p_val = stats.wilcoxon(paired_df.iloc[:, 0], paired_df.iloc[:, 1])
                     
                     if np.isnan(p_val):
                         p_val_str = "N/A"
@@ -180,7 +180,7 @@ def create_metric_table(
 
     # --- 3. Create Markdown Version ---
     df_md = df_formatted.copy()
-    df_md = df_md.applymap(lambda x: str(x).replace(r"\textbf{", "**").replace("}", "**"))
+    df_md = df_md.map(lambda x: str(x).replace(r"\textbf{", "**").replace("}", "**"))
     df_md.index.name = "Method"
     print(tabulate(df_md, headers="keys", tablefmt="pipe", stralign="center"))
 
