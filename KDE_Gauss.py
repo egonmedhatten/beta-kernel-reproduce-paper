@@ -477,18 +477,12 @@ class GaussianKDE:
             )
 
         # --- Stage 4: Local Refinement ---
-        refinement_lower = max(
-            final_search_bounds[0], best_grid_h - grid_step
-        )
-        refinement_upper = min(
-            final_search_bounds[1], best_grid_h + grid_step
-        )
+        refinement_lower = max(final_search_bounds[0], best_grid_h - grid_step)
+        refinement_upper = min(final_search_bounds[1], best_grid_h + grid_step)
         refinement_bounds = (refinement_lower, refinement_upper)
 
         if self.verbose > 0:
-            print(
-                f"LSCV: Starting local refinement in bounds {refinement_bounds}..."
-            )
+            print(f"LSCV: Starting local refinement in bounds {refinement_bounds}...")
 
         # Set default optimization options if not provided
         kwargs.setdefault("method", "bounded")
@@ -523,7 +517,7 @@ class GaussianKDE:
 
         self.bandwidth = optimal_bandwidth
         return optimal_bandwidth
-    
+
     def plot(
         self,
         eval_points: np.ndarray = None,
@@ -570,7 +564,9 @@ class GaussianKDE:
         else:
             fig = ax.figure
 
-        plot_label = f"Gaussian KDE (h={self.bandwidth:.4f})" if label is None else label
+        plot_label = (
+            f"Gaussian KDE (h={self.bandwidth:.4f})" if label is None else label
+        )
         ax.plot(
             eval_points,
             pdf_values,

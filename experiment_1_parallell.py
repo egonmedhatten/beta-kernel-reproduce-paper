@@ -66,7 +66,6 @@ GAUSS_LOGIT_BOUNDS = (0.01, 2.0)
 MAX_WORKERS = 32
 
 
-
 # --- Distribution Definitions ---
 # *** MODIFIED ***
 # All "generator" functions now accept an `rng` argument
@@ -402,7 +401,7 @@ def _evaluate_method(kde, dist_type, true_pdf_func):
         integral, _ = quad(func, 0, 1, limit=100)
         error = abs(integral - 1.0)
     except:
-        error = np.nan # Skip failed integrations
+        error = np.nan  # Skip failed integrations
 
     return h, score_lscv, score_ise, is_fallback, error
 
@@ -565,7 +564,7 @@ def run_single_trial(dist_name, dist_config, n, I1, I2, rng):
 
         try:
             if method_handle in fitted_kdes:
-                (fitted_kde, fit_time) = fitted_kdes[method_handle]
+                fitted_kde, fit_time = fitted_kdes[method_handle]
                 if (
                     fitted_kde is not None
                     and fitted_kde.bandwidth is not None

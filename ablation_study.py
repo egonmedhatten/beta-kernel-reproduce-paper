@@ -26,23 +26,28 @@ from scipy.stats import beta
 # --- Import official package ---
 # Assuming your package is installed or in the Python path
 from beta_kde import BetaKDE as BetaKernelKDE
+
 # except ImportError:
-    # Fallback to local file if package isn't pip installed yet
-    # from KDE import BetaKernelKDE 
+# Fallback to local file if package isn't pip installed yet
+# from KDE import BetaKernelKDE
 
 # =============================================================================
 # ABLATION MODELS (Subclassing to cleanly override the fallback)
 # =============================================================================
 
+
 class BetaKDE_ModelA(BetaKernelKDE):
     """Model A: Naive Baseline (Variance only)."""
+
     def _calculate_hybrid_fallback(self, a, b) -> float:
         s = np.sqrt(self.variance(a, b))
         n = self.n_samples_
         return 1e-5 if s == 0 else s * (n ** (-0.4))
 
+
 class BetaKDE_ModelB(BetaKernelKDE):
     """Model B: Asymmetry Penalty (Variance + Skewness)."""
+
     def _calculate_hybrid_fallback(self, a, b) -> float:
         s = np.sqrt(self.variance(a, b))
         sk = self.skewness(a, b)
@@ -50,14 +55,17 @@ class BetaKDE_ModelB(BetaKernelKDE):
         C = s / (1 + abs(sk))
         return 1e-5 if s == 0 else C * (n ** (-0.4))
 
+
 class BetaKDE_ModelC(BetaKernelKDE):
     """Model C: Spikiness Penalty (Variance + Excess Kurtosis)."""
+
     def _calculate_hybrid_fallback(self, a, b) -> float:
         s = np.sqrt(self.variance(a, b))
         kurt = self.kurtosis(a, b)
         n = self.n_samples_
         C = s / (1 + abs(kurt))
         return 1e-5 if s == 0 else C * (n ** (-0.4))
+
 
 # Model D is the standard BetaKernelKDE, no subclass needed.
 
@@ -69,17 +77,19 @@ N_REPLICATIONS = 1000
 SAMPLE_SIZES = [50, 100, 250, 500, 1000, 2000]
 OUTPUT_CSV_FILE = "data/ablation_study/ablation_results.csv"
 MASTER_SEED = 2026
-MAX_WORKERS = 5#32
+MAX_WORKERS = 5  # 32
 
 # We only test the distributions where the fallback heuristic is actually triggered.
 DISTRIBUTIONS = {
     "B(0.5, 0.5)": lambda n, rng: rng.beta(0.5, 0.5, size=n),
     "B(0.8, 2.5)": lambda n, rng: rng.beta(0.8, 2.5, size=n),
     "B(1.5, 1.5)": lambda n, rng: rng.beta(1.5, 1.5, size=n),
-    "BIMODAL": lambda n, rng: np.concatenate([
-        rng.beta(10, 30, size=n // 2),
-        rng.beta(30, 10, size=n - (n // 2)),
-    ]),
+    "BIMODAL": lambda n, rng: np.concatenate(
+        [
+            rng.beta(10, 30, size=n // 2),
+            rng.beta(30, 10, size=n - (n // 2)),
+        ]
+    ),
 }
 
 METHODS = {
@@ -90,17 +100,18 @@ METHODS = {
 }
 
 # =============================================================================
-# HELPER FUNCTIONS 
+# HELPER FUNCTIONS
 # =============================================================================
 
 from sklearn.model_selection import KFold
 from scipy.integrate import quad
 
+
 def lscv_score(kde, n_folds=10):
     """Calculates the universal LSCV score for a fitted KDE."""
     if kde.bandwidth is None or not np.isfinite(kde.bandwidth) or len(kde.data_) == 0:
         return np.nan
-        
+
     n = len(kde.data_)
     try:
         term1, _ = quad(lambda x: kde.pdf(x) ** 2, 0, 1, limit=50, epsabs=1e-4)
@@ -122,9 +133,11 @@ def lscv_score(kde, n_folds=10):
 
     return term1 - term2
 
+
 # =============================================================================
 # WORKER LOGIC
 # =============================================================================
+
 
 def run_ablation_trial(job_args):
     """Worker function to run a single trial across all 4 ablation models."""
@@ -141,15 +154,17 @@ def run_ablation_trial(job_args):
             kde = KDEClass(bandwidth="MISE_rule", verbose=0)
             kde.fit(data)
             fit_time = time.perf_counter() - start_time
-            
+
             # Evaluate
             score_lscv = lscv_score(kde)
-            
+
             results[f"{method_name}_h"] = kde.bandwidth
             results[f"{method_name}_lscv"] = score_lscv
             results[f"{method_name}_time"] = fit_time
-            results[f"{method_name}_fallback_triggered"] = getattr(kde, "is_fallback", False)
-            
+            results[f"{method_name}_fallback_triggered"] = getattr(
+                kde, "is_fallback", False
+            )
+
         except Exception as e:
             results[f"{method_name}_h"] = np.nan
             results[f"{method_name}_lscv"] = np.nan
@@ -158,14 +173,16 @@ def run_ablation_trial(job_args):
 
     return results
 
+
 # =============================================================================
 # MAIN EXECUTION
 # =============================================================================
 
+
 def main():
     print("--- Starting Ablation Study (Parallel) ---")
     os.makedirs(os.path.dirname(OUTPUT_CSV_FILE), exist_ok=True)
-    
+
     # Pre-spawn RNG seeds
     master_seed_seq = SeedSequence(MASTER_SEED)
     child_seeds = master_seed_seq.spawn(N_REPLICATIONS)
@@ -181,16 +198,22 @@ def main():
     # Execute in parallel
     with open(OUTPUT_CSV_FILE, "w", newline="") as f_out:
         write_header = True
-        with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=MAX_WORKERS
+        ) as executor:
             # Note: requires pip install tqdm
-            from tqdm.auto import tqdm 
-            for trial_results in tqdm(executor.map(run_ablation_trial, jobs_to_run), total=len(jobs_to_run)):
+            from tqdm.auto import tqdm
+
+            for trial_results in tqdm(
+                executor.map(run_ablation_trial, jobs_to_run), total=len(jobs_to_run)
+            ):
                 if trial_results:
                     df_row = pd.DataFrame([trial_results])
                     df_row.to_csv(f_out, header=write_header, index=False)
                     write_header = False
 
     print(f"Ablation study complete. Results saved to {OUTPUT_CSV_FILE}")
+
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")

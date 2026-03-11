@@ -38,6 +38,7 @@ import time
 import warnings
 
 import matplotlib.pyplot as plt
+
 # FIXME: Make the plots in 'svg' format for vector quality.
 import numpy as np
 import pandas as pd
@@ -137,20 +138,20 @@ def lscv_score(kde, n_folds=None):
 
     # --- Term 2: (2/n) * sum(f_hat_loo) (TRUE LOO CALCULATION) ---
     term2_sum = 0
-    
+
     # This loop is O(n^2)
     print("\nCalculating true LOO score... (This may take a while)")
     try:
         # Create a mask for all data points
         all_indices = np.arange(n)
-        
+
         for i in tqdm(range(n), desc="LSCV LOO"):
             # Get the i-th data point (the one to leave out)
             x_i = data[i]
-            
+
             # Create the LOO training set by masking the i-th point
             X_loo = data[all_indices != i]
-            
+
             if len(X_loo) == 0:
                 continue
 
@@ -160,14 +161,14 @@ def lscv_score(kde, n_folds=None):
 
             # Evaluate the PDF at the left-out point
             pdf_val_i = kde_loo.pdf(x_i)
-            
+
             if np.isfinite(pdf_val_i):
                 term2_sum += pdf_val_i
-        
+
         term2 = 2 * (term2_sum / n)
         if not np.isfinite(term2):
             term2 = np.nan
-            
+
     except Exception as e:
         print(f"Warning: LOO calculation failed. Error: {e}")
         term2 = np.nan
@@ -225,9 +226,9 @@ def run_comparison(data, data_name):
             # Record if the fallback rule was used for the full data fit
             is_fallback_full = False
             if method_name == "BETA_ROT":
-                is_fallback_full = getattr(kde, 'is_fallback', False)
+                is_fallback_full = getattr(kde, "is_fallback", False)
             # --- END NEW BLOCK ---
-            
+
             results_list.append(
                 {
                     "dataset": data_name,
@@ -235,7 +236,7 @@ def run_comparison(data, data_name):
                     "bandwidth": kde.bandwidth,
                     "comp_time_sec": comp_time,
                     "lscv_score": score_lscv,
-                    "is_fallback_full": is_fallback_full, # <-- ADDED
+                    "is_fallback_full": is_fallback_full,  # <-- ADDED
                 }
             )
 
@@ -248,7 +249,7 @@ def run_comparison(data, data_name):
                     "bandwidth": np.nan,
                     "comp_time_sec": np.nan,
                     "lscv_score": np.nan,
-                    "is_fallback_full": np.nan, # <-- ADDED
+                    "is_fallback_full": np.nan,  # <-- ADDED
                 }
             )
 
@@ -263,9 +264,7 @@ def run_comparison(data, data_name):
     fold_results = []
 
     for rep in tqdm(range(N_REPETITIONS), desc="CV Repetitions"):
-        kf = KFold(
-            n_splits=N_FOLDS, shuffle=True, random_state=RND_GEN.integers(1000)
-        )
+        kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=RND_GEN.integers(1000))
 
         for fold_idx, (train_idx, test_idx) in enumerate(kf.split(data)):
             X_train, X_test = data[train_idx], data[test_idx]
@@ -275,9 +274,8 @@ def run_comparison(data, data_name):
                     kde_fold = config["class"](**config["init_args"])
                     kde_fold.fit(X_train)  # Re-fit selector on the training fold
 
-                    if (
-                        kde_fold.bandwidth is None
-                        or not np.isfinite(kde_fold.bandwidth)
+                    if kde_fold.bandwidth is None or not np.isfinite(
+                        kde_fold.bandwidth
                     ):
                         raise Exception("Bandwidth selection failed.")
 
@@ -285,9 +283,7 @@ def run_comparison(data, data_name):
                     pdf_values = kde_fold.pdf(X_test)
 
                     # Metric 1: Log-Likelihood (for predictive power)
-                    pdf_values_log = np.clip(
-                        pdf_values, EPSILON, 1.0
-                    )  # Avoid log(0)
+                    pdf_values_log = np.clip(pdf_values, EPSILON, 1.0)  # Avoid log(0)
                     mean_log_lik = np.mean(np.log(pdf_values_log))
 
                     # Metric 2: Mean Held-Out Density (for LSCV-optimality)
@@ -298,9 +294,9 @@ def run_comparison(data, data_name):
                     # Record if the fallback rule was used for this fold
                     is_fallback_fold = False
                     if method_name == "BETA_ROT":
-                        is_fallback_fold = getattr(kde_fold, 'is_fallback', False)
+                        is_fallback_fold = getattr(kde_fold, "is_fallback", False)
                     # --- END NEW BLOCK ---
-                    
+
                     fold_results.append(
                         {
                             "dataset": data_name,
@@ -309,7 +305,7 @@ def run_comparison(data, data_name):
                             "method": method_name,
                             "log_likelihood": mean_log_lik,
                             "mean_heldout_density": mean_density,
-                            "is_fallback": is_fallback_fold, # <-- ADDED
+                            "is_fallback": is_fallback_fold,  # <-- ADDED
                         }
                     )
 
@@ -322,7 +318,7 @@ def run_comparison(data, data_name):
                             "method": method_name,
                             "log_likelihood": np.nan,
                             "mean_heldout_density": np.nan,
-                            "is_fallback": np.nan, # <-- ADDED
+                            "is_fallback": np.nan,  # <-- ADDED
                         }
                     )
 
@@ -331,22 +327,22 @@ def run_comparison(data, data_name):
     # Aggregate scores and merge
     # --- MODIFIED BLOCK (added 'is_fallback' to aggregation) ---
     df_agg_summary = (
-        df_per_fold.groupby("method")[["log_likelihood", "mean_heldout_density", "is_fallback"]]
+        df_per_fold.groupby("method")[
+            ["log_likelihood", "mean_heldout_density", "is_fallback"]
+        ]
         .mean()
         .reset_index()
     )
     # Rename the aggregated fallback column for clarity
     df_agg_summary.rename(columns={"is_fallback": "is_fallback_cv_mean"}, inplace=True)
     # --- END MODIFIED BLOCK ---
-    
+
     df_summary = df_summary.merge(df_agg_summary, on="method", how="left")
 
     return df_summary, df_per_fold, fitted_kdes
 
 
-def plot_densities(
-    fitted_kdes, data, data_name, output_dir="data/experiment2/plots"
-):
+def plot_densities(fitted_kdes, data, data_name, output_dir="data/experiment2/plots"):
     """
     Plots the density estimates for each method and saves the plot.
     """
@@ -423,14 +419,10 @@ def main():
         data_to_run = data_vector
         # --- END FIX ---
         if len(data_to_run) < 200:
-            print(
-                f"\nSkipping {data_name}: Not enough data (n={len(data_to_run)})"
-            )
+            print(f"\nSkipping {data_name}: Not enough data (n={len(data_to_run)})")
             continue
 
-        df_summary, df_per_fold, fitted_kdes = run_comparison(
-            data_to_run, data_name
-        )
+        df_summary, df_per_fold, fitted_kdes = run_comparison(data_to_run, data_name)
         all_summary_results.append(df_summary)
         all_fold_results.append(df_per_fold)
 
@@ -552,13 +544,13 @@ def main():
     # Re-order columns to put new fallback columns in a logical place
     all_cols = list(df_final_summary.columns)
     # Pop the new columns
-    is_fallback_full = all_cols.pop(all_cols.index('is_fallback_full'))
-    is_fallback_cv_mean = all_cols.pop(all_cols.index('is_fallback_cv_mean'))
+    is_fallback_full = all_cols.pop(all_cols.index("is_fallback_full"))
+    is_fallback_cv_mean = all_cols.pop(all_cols.index("is_fallback_cv_mean"))
     # Re-insert them after 'bandwidth'
     df_final_summary = df_final_summary.reindex(
         columns=all_cols[:3] + [is_fallback_full, is_fallback_cv_mean] + all_cols[3:]
     )
-    
+
     df_final_summary.to_csv(summary_file, index=False)
     df_final_folds.to_csv(per_fold_file, index=False)
 
