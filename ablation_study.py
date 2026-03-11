@@ -22,14 +22,7 @@ import numpy as np
 import pandas as pd
 from numpy.random import SeedSequence
 from scipy.stats import beta
-
-# --- Import official package ---
-# Assuming your package is installed or in the Python path
-from beta_kde import BetaKDE as BetaKernelKDE
-
-# except ImportError:
-# Fallback to local file if package isn't pip installed yet
-# from KDE import BetaKernelKDE
+from KDE import BetaKernelKDE
 
 # =============================================================================
 # ABLATION MODELS (Subclassing to cleanly override the fallback)
