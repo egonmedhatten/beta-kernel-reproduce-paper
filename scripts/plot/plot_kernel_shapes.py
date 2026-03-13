@@ -96,7 +96,6 @@ def plot_chen_f2_kernels():
     OUTPUT_DIR = str(PLOTS_DIR)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     fig.savefig(f"{OUTPUT_DIR}/kernel_shape_plot.pdf")
-    plt.show()
 
 
 if __name__ == "__main__":

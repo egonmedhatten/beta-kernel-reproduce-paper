@@ -24,3 +24,6 @@ OUTPUT_DIR: Path = REPO_ROOT / "output"
 PLOTS_DIR: Path = OUTPUT_DIR / "plots"
 TABLES_DIR: Path = OUTPUT_DIR / "tables"
 SUPPLEMENTARY_DIR: Path = OUTPUT_DIR / "supplementary"
+
+for directory in [DATA_DIR, OUTPUT_DIR, PLOTS_DIR, TABLES_DIR, SUPPLEMENTARY_DIR]:
+    directory.mkdir(parents=True, exist_ok=True)

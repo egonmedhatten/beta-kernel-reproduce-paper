@@ -5,28 +5,30 @@ before creating figures, plus per-method style dictionaries that encode both
 *colour* (for the online/digital version) and *linestyle + marker* (so every
 series remains distinguishable when printed in black-and-white).
 
-Colours are Paul Tol's colorblind-safe "bright" palette, specified as inline
-hex codes so there is no external dependency on ``tol_colors``.
+Colours primarily use the Okabe-Ito colorblind-safe palette, supplemented 
+by high-contrast Paul Tol colors, optimized for grayscale luminance.
 """
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 # ---------------------------------------------------------------------------
-# Paul Tol "bright" colorblind-safe hex palette
-# (https://personal.sron.nl/~pault/)
+# Okabe-Ito & High-Contrast Colorblind-Safe Palette
+# (Gold standard for scientific plotting and grayscale conversion)
 # ---------------------------------------------------------------------------
 COLORS = {
-    "blue":   "#4477AA",
-    "cyan":   "#66CCEE",
-    "green":  "#228833",
-    "yellow": "#CCBB44",
-    "red":    "#EE6677",
-    "purple": "#AA3377",
-    "grey":   "#BBBBBB",
-    "indigo": "#332288",
-    "teal":   "#44AA99",
-    "olive":  "#999933",
+    # Okabe-Ito Base
+    "black":     "#000000",
+    "orange":    "#E69F00",
+    "skyblue":   "#56B4E9",
+    "green":     "#009E73",
+    "blue":      "#0072B2",
+    "vermilion": "#D55E00",  # Dark, vibrant red/orange
+    "purple":    "#CC79A7",
+    "grey":      "#999999",
+    # Supplementary high-contrast Paul Tol
+    "indigo":    "#332288",
+    "teal":      "#44AA99",
 }
 
 # ---------------------------------------------------------------------------
@@ -68,31 +70,36 @@ def setup_theme():
 # ---------------------------------------------------------------------------
 # Experiment 1 & 2 — per-method styles (10 methods)
 #
-# Semantic grouping:
+# Semantic grouping by LINELSTYLE (Selector):
+#   linestyle  "-"   (solid)     = proposed method (Beta Ref) — emphasised
 #   linestyle  "--"  (dashed)    = fast / rule-of-thumb selectors
 #   linestyle  ":"   (dotted)    = LSCV selectors
 #   linestyle  "-."  (dash-dot)  = oracle / benchmark (ISE-min, Oracle)
-#   linestyle  "-"   (solid)     = proposed method (Beta Ref) — emphasised
 #
-# Each method also gets a unique marker so the series are distinguishable
-# even without colour.
+# Semantic grouping by COLOR (Estimator):
+#   Reds/Warm = Beta, Blues = Logit, Greens = Reflect
+#
+# Unique markers guarantee distinguishability in B&W print.
 # ---------------------------------------------------------------------------
 
 METHOD_STYLES = {
-    # --- Proposed ---
-    "Beta (Ref)":          {"color": COLORS["red"],    "linestyle": "-",  "marker": "o", "dashes": (1, 0)},
-    # --- Rule-of-thumb / fast ---
-    "Logit (Silverman)":   {"color": COLORS["cyan"],   "linestyle": "--", "marker": "s", "dashes": (4, 1.5)},
-    "Reflect (Silverman)": {"color": COLORS["green"],  "linestyle": "--", "marker": "^", "dashes": (4, 1.5)},
-    # --- LSCV ---
-    "Beta (LSCV)":         {"color": COLORS["blue"],   "linestyle": ":",  "marker": "D", "dashes": (1, 1)},
-    "Logit (LSCV)":        {"color": COLORS["yellow"], "linestyle": ":",  "marker": "v", "dashes": (1, 1)},
-    "Reflect (LSCV)":      {"color": COLORS["teal"],   "linestyle": ":",  "marker": "P", "dashes": (1, 1)},
-    # --- Oracle / Benchmark ---
-    "Beta (Oracle)":       {"color": COLORS["purple"], "linestyle": "-.", "marker": "X", "dashes": (5, 1, 1, 1)},
-    "Beta (ISE)":          {"color": COLORS["olive"],  "linestyle": "-.", "marker": "*", "dashes": (5, 1, 1, 1)},
-    "Logit (ISE-min)":     {"color": COLORS["indigo"], "linestyle": "-.", "marker": "h", "dashes": (5, 1, 1, 1)},
-    "Reflect (ISE-min)":   {"color": COLORS["grey"],   "linestyle": "-.", "marker": "d", "dashes": (5, 1, 1, 1)},
+    # --- PROPOSED (High visibility Vermilion, Solid, Circle) ---
+    "Beta (Ref)":          {"color": COLORS["vermilion"], "linestyle": "-",  "marker": "o", "dashes": ""},
+    
+    # --- BETA FAMILY (Warm/Red Hues) ---
+    "Beta (LSCV)":         {"color": COLORS["orange"],    "linestyle": ":",  "marker": "D", "dashes": (1, 1.5)},
+    "Beta (Oracle)":       {"color": COLORS["purple"],    "linestyle": "-.", "marker": "*", "dashes": (4, 1.5, 1, 1.5)},
+    "Beta (ISE)":          {"color": COLORS["black"],     "linestyle": "-.", "marker": "X", "dashes": (4, 1.5, 1, 1.5)},
+
+    # --- LOGIT FAMILY (Blue Hues) ---
+    "Logit (Silverman)":   {"color": COLORS["blue"],      "linestyle": "--", "marker": "s", "dashes": (4, 1.5)},
+    "Logit (LSCV)":        {"color": COLORS["skyblue"],   "linestyle": ":",  "marker": "v", "dashes": (1, 1.5)},
+    "Logit (ISE-min)":     {"color": COLORS["indigo"],    "linestyle": "-.", "marker": "p", "dashes": (4, 1.5, 1, 1.5)},
+
+    # --- REFLECT FAMILY (Green/Grey Hues) ---
+    "Reflect (Silverman)": {"color": COLORS["green"],     "linestyle": "--", "marker": "^", "dashes": (4, 1.5)},
+    "Reflect (LSCV)":      {"color": COLORS["teal"],      "linestyle": ":",  "marker": "P", "dashes": (1, 1.5)},
+    "Reflect (ISE-min)":   {"color": COLORS["grey"],      "linestyle": "-.", "marker": "h", "dashes": (4, 1.5, 1, 1.5)},
 }
 
 # ---------------------------------------------------------------------------
@@ -123,9 +130,9 @@ def get_method_order():
 # ---------------------------------------------------------------------------
 
 ABLATION_STYLES = {
-    "MODEL_A": {"label": "Baseline: Var Only",  "color": COLORS["red"],   "linestyle": "dotted",  "marker": "o"},
-    "MODEL_B": {"label": "Baseline: Var + Skew","color": COLORS["green"], "linestyle": "dashed",  "marker": "s"},
-    "MODEL_C": {"label": "Baseline: Var + Kurt","color": COLORS["blue"],  "linestyle": "dashdot", "marker": "^"},
+    "MODEL_A": {"label": "Baseline: Var Only",  "color": COLORS["vermilion"], "linestyle": "dotted",  "marker": "o"},
+    "MODEL_B": {"label": "Baseline: Var + Skew","color": COLORS["green"],     "linestyle": "dashed",  "marker": "s"},
+    "MODEL_C": {"label": "Baseline: Var + Kurt","color": COLORS["blue"],      "linestyle": "dashdot", "marker": "^"},
 }
 
 # ---------------------------------------------------------------------------
@@ -133,10 +140,10 @@ ABLATION_STYLES = {
 # ---------------------------------------------------------------------------
 
 KERNEL_SHAPE_COLORS = [
-    COLORS["red"],
+    COLORS["vermilion"],
     COLORS["blue"],
     COLORS["green"],
-    COLORS["yellow"],
+    COLORS["orange"],
     COLORS["purple"],
     COLORS["teal"],
 ]
