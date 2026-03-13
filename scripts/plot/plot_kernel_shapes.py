@@ -1,8 +1,15 @@
+"""Plot illustrating the adaptive shape of the modified Beta kernel."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import PLOTS_DIR
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-# --- 1. Keep this (Correct way to config SVG fonts) ---
 plt.rcParams["svg.fonttype"] = "none"
 
 from tol_colors import tol_cmap, tol_cset
@@ -75,18 +82,13 @@ def plot_chen_f2_kernels():
         else:
             print(f"Invalid parameters for x={x_eval}: a={a}, b={b_param}")
 
-    # ax.set_title(f'Beta Kernel Shapes ($\hat{{f}}_2$) for $h={h}$')
     ax.set_xlabel("t (Data Domain)")
     ax.set_ylabel("Beta kernels $K^*_{x,h}(t)$")
-
-    # # Highlight the boundary region
-    # ax.axvline(2*h, color='gray', linestyle='--', alpha=0.5)
-    # ax.text(h, ax.get_ylim()[1]*0.1, 'Boundary\nRegion', ha='center', alpha=0.6)
 
     ax.legend()
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    OUTPUT_DIR = "plots"
+    OUTPUT_DIR = str(PLOTS_DIR)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     fig.savefig(f"{OUTPUT_DIR}/kernel_shape_plot.pdf")
     plt.show()

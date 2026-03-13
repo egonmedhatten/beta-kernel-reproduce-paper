@@ -1,7 +1,14 @@
+"""Export aggregated Experiment 1 results to a supplementary CSV file."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import DATA_DIR, SUPPLEMENTARY_DIR
+
 import pandas as pd
 import numpy as np
 import os
-import sys
 
 
 def format_dist_name(dist_name):
@@ -14,8 +21,8 @@ def format_dist_name(dist_name):
 
 def export_experiment_1_csv():
     # 1. Configuration
-    input_file = "data/experiment1/simulation_results_full.csv"
-    output_file = "supplementary-results/supplementary_experiment_1_results.csv"
+    input_file = str(DATA_DIR / "experiment1" / "simulation_results_full.csv")
+    output_file = str(SUPPLEMENTARY_DIR / "supplementary_experiment_1_results.csv")
 
     # Check if input exists
     if not os.path.exists(input_file):

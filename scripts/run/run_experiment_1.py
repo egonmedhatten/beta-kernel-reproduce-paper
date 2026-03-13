@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
-"""
-Main script for running the "Bulletproof" Experiment 1. (PARALLEL VERSION)
+"""Experiment 1: Simulation study comparing kernel density estimators on [0, 1].
 
-This script executes the 7-distribution, 6-sample-size, 10-competitor
-simulation, running 1000 trials for each configuration.
+Runs a 7-distribution, 6-sample-size, 10-method Monte Carlo simulation
+with 1000 replications per configuration. Execution is parallelized via
+``concurrent.futures.ProcessPoolExecutor``.
 
-It has been modified to use `concurrent.futures.ProcessPoolExecutor`
-to run trials in parallel, dramatically speeding up execution on
-multi-core systems.
+Random number generation uses ``numpy.random.SeedSequence`` to spawn
+independent child seeds from a master seed, ensuring reproducibility
+across parallel workers.
 
-Random number generation is handled by spawning a unique child seed
-from a master seed for each trial, ensuring reproducible and
-independent random streams for all parallel jobs.
+Recorded metrics per trial:
+    - LSCV score (primary, universal)
+    - ISE score (for smooth distributions only)
+    - Computation time
+    - Selected bandwidth
+    - Fallback indicator (for the beta reference rule)
 
-It records all specified metrics:
-- LSCV Score (Primary, universal metric)
-- ISE Score (Validation metric, for "nice" dists only)
-- Computation Time (for the .fit() call)
-- Bandwidth (h)
-- is_fallback (for BETA_ROT)
-
-Results are saved incrementally to 'simulation_results_full.csv'.
-If the script is stopped, it can be resumed and will not re-run
-completed trials.
+Results are saved incrementally so the experiment can be resumed.
 """
 
-import concurrent.futures  # <-- NEW: For parallel processing
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import REPO_ROOT, DATA_DIR
+
+import concurrent.futures
 import os
 import time
 import warnings
@@ -33,44 +33,32 @@ import warnings
 import numpy as np
 import pandas as pd
 import scipy.special as sp
-from numpy.random import SeedSequence  # <-- NEW: For robust RNG seeding
+from numpy.random import SeedSequence
 from scipy.integrate import quad
 from scipy.optimize import minimize_scalar
 from scipy.stats import beta, truncnorm
 from tqdm.auto import tqdm
 
-# Import your custom KDE classes
-# We assume KDE.py and KDE_Gauss.py are in the same directory
-try:
-    from KDE import BetaKernelKDE
-    from KDE_Gauss import GaussianKDE
-except ImportError:
-    print(
-        "Error: Could not import KDE and KDE_Gauss.py. Make sure they are in the same directory."
-    )
-    exit()
+from KDE import BetaKernelKDE
+from KDE_Gauss import GaussianKDE
 
 
 # --- Global Settings ---
 N_REPLICATIONS = 1000  # Full run
 SAMPLE_SIZES = [50, 100, 250, 500, 1000, 2000]  # Full run
-OUTPUT_CSV_FILE = "data/experiment1/simulation_results_full.csv"
-MASTER_SEED = 2025  # <-- NEW: Master seed for reproducibility
+OUTPUT_CSV_FILE = str(DATA_DIR / "experiment1" / "simulation_results_full.csv")
+MASTER_SEED = 2025
 BETA_BOUNDS = (1e-4, 0.5)
 GAUSS_REFLECT_BOUNDS = (1e-4, 0.5)
 GAUSS_LOGIT_BOUNDS = (0.01, 2.0)
 
-# --- NEW: Parallel Execution Settings ---
+# Parallel execution settings
 # Set to None to use all available CPU cores (default for ProcessPoolExecutor)
 # Set to an integer to limit the number of worker processes, e.g., 4 or 8
 MAX_WORKERS = 32
 
 
 # --- Distribution Definitions ---
-# *** MODIFIED ***
-# All "generator" functions now accept an `rng` argument
-# to ensure independent random streams per trial.
-#
 def trunc_norm_05_pdf(x):
     a, b = (0 - 0.5) / 0.15, (1 - 0.5) / 0.15
     return np.maximum(truncnorm.pdf(x, a=a, b=b, loc=0.5, scale=0.15), EPS)
@@ -110,43 +98,43 @@ def beta_pdf_pp_factory(a, b):
 
 DISTRIBUTIONS = {
     "B(5, 5)": {
-        "generator": lambda n, rng: rng.beta(5, 5, size=n),  # MODIFIED
+        "generator": lambda n, rng: rng.beta(5, 5, size=n),
         "true_pdf": lambda x: beta.pdf(x, 5, 5),
         "type": "nice",
         "oracle_params": (5, 5),
     },
     "B(2, 12)": {
-        "generator": lambda n, rng: rng.beta(2, 12, size=n),  # MODIFIED
+        "generator": lambda n, rng: rng.beta(2, 12, size=n),
         "true_pdf": lambda x: beta.pdf(x, 2, 12),
         "type": "nice",
         "oracle_params": (2, 12),
     },
     "B(0.5, 0.5)": {
-        "generator": lambda n, rng: rng.beta(0.5, 0.5, size=n),  # MODIFIED
+        "generator": lambda n, rng: rng.beta(0.5, 0.5, size=n),
         "true_pdf": lambda x: beta.pdf(x, 0.5, 0.5),
         "type": "hard",
         "oracle_params": (0.5, 0.5),
     },
     "B(0.8, 2.5)": {
-        "generator": lambda n, rng: rng.beta(0.8, 2.5, size=n),  # MODIFIED
+        "generator": lambda n, rng: rng.beta(0.8, 2.5, size=n),
         "true_pdf": lambda x: beta.pdf(x, 0.8, 2.5),
         "type": "hard",
         "oracle_params": (0.8, 2.5),
     },
     "B(1.5, 1.5)": {
-        "generator": lambda n, rng: rng.beta(1.5, 1.5, size=n),  # MODIFIED
+        "generator": lambda n, rng: rng.beta(1.5, 1.5, size=n),
         "true_pdf": lambda x: beta.pdf(x, 1.5, 1.5),
         "type": "hard",
         "oracle_params": (1.5, 1.5),
     },
     "NT(0.5, 0.15)": {
-        "generator": lambda n, rng: truncnorm.rvs(  # MODIFIED
+        "generator": lambda n, rng: truncnorm.rvs(
             a=(0 - 0.5) / 0.15,
             b=(1 - 0.5) / 0.15,
             loc=0.5,
             scale=0.15,
             size=n,
-            random_state=rng,  # MODIFIED
+            random_state=rng,
         ),
         "true_pdf": trunc_norm_05_pdf,
         "true_pdf_pp": trunc_norm_05_pdf_pp,
@@ -154,13 +142,13 @@ DISTRIBUTIONS = {
         "oracle_params": None,
     },
     "NT(0.7, 0.15)": {
-        "generator": lambda n, rng: truncnorm.rvs(  # MODIFIED
+        "generator": lambda n, rng: truncnorm.rvs(
             a=(0 - 0.7) / 0.15,
             b=(1 - 0.7) / 0.15,
             loc=0.7,
             scale=0.15,
             size=n,
-            random_state=rng,  # MODIFIED
+            random_state=rng,
         ),
         "true_pdf": trunc_norm_07_pdf,
         "true_pdf_pp": trunc_norm_07_pdf_pp,
@@ -168,10 +156,10 @@ DISTRIBUTIONS = {
         "oracle_params": None,
     },
     "BIMODAL": {
-        "generator": lambda n, rng: np.concatenate(  # MODIFIED
+        "generator": lambda n, rng: np.concatenate(
             [
-                rng.beta(10, 30, size=n // 2),  # MODIFIED
-                rng.beta(30, 10, size=n - (n // 2)),  # MODIFIED
+                rng.beta(10, 30, size=n // 2),
+                rng.beta(30, 10, size=n - (n // 2)),
             ]
         ),
         "true_pdf": lambda x: 0.5 * beta.pdf(x, 10, 30) + 0.5 * beta.pdf(x, 30, 10),
@@ -199,12 +187,10 @@ METHODS_TO_RUN = [
 
 # %%
 # =============================================================================
-# HELPER FUNCTIONS (Copied from zz_test.py and our discussion)
+# HELPER FUNCTIONS
 # =============================================================================
-# (All helper functions... lscv_score, ise, calculate_oracle_integrals...
-# are unchanged, so they are omitted here for brevity.
-# Just paste them in from the original script.)
-# ...
+
+
 def calculate_oracle_integrals(a=None, b=None, pdf_func=None, pdf_pp_func=None):
     if a is not None and b is not None:
         return calculate_oracle_integrals_beta(a, b)
@@ -364,8 +350,6 @@ def lscv_score(kde, n_folds=10):
     return term1 - term2
 
 
-# ...
-# End of unchanged helper functions
 # %%
 # =============================================================================
 # EXPERIMENT 1 CORE LOGIC
@@ -382,7 +366,6 @@ def _evaluate_method(kde, dist_type, true_pdf_func):
         if (kde.bandwidth is not None and np.isfinite(kde.bandwidth))
         else np.nan
     )
-    # Use getattr for is_fallback, as it's specific to BetaKernelKDE
     is_fallback = getattr(kde, "is_fallback", False)
 
     # A. LSCV Score (Primary, Universal Metric)
@@ -407,17 +390,11 @@ def _evaluate_method(kde, dist_type, true_pdf_func):
 
 
 def run_single_trial(dist_name, dist_config, n, I1, I2, rng):
-    """
-    Runs one full trial (one row of the CSV) for all 10 methods.
-
-    *** MODIFIED ***
-    This function now accepts an `rng` object to generate data.
-    """
+    """Runs one full trial (one row of the CSV) for all 10 methods."""
     # 1. Generate data and get helpers
-    data = dist_config["generator"](n, rng)  # <-- MODIFIED
+    data = dist_config["generator"](n, rng)
     true_pdf_func = dist_config["true_pdf"]
     dist_type = dist_config["type"]
-    oracle_params_tuple = dist_config.get("oracle_params")
 
     trial_results_dict = {
         "distribution": dist_name,
@@ -426,13 +403,7 @@ def run_single_trial(dist_name, dist_config, n, I1, I2, rng):
 
     fitted_kdes = {}
 
-    # --- 2. FIT ALL METHODS (using the correct .fit() calls) ---
-    # ...
-    # (The fitting logic here is complex but *unchanged*.
-    # It is omitted for brevity. Just paste the entire
-    # "FIT ALL METHODS" block from your original script.)
-    # ...
-    # --- BETA Methods ---
+    # --- 2. Fit all methods ---
     try:
         kde = BetaKernelKDE(bandwidth="MISE_rule", verbose=0)
         start_time = time.perf_counter()
@@ -553,10 +524,6 @@ def run_single_trial(dist_name, dist_config, n, I1, I2, rng):
     except Exception:
         fitted_kdes["REFLECT_ISE"] = (None, np.nan)
 
-    # ...
-    # End of unchanged fitting block
-    # ...
-
     # --- 3. Evaluate all fitted methods ---
     for method_handle in METHODS_TO_RUN:
         h, score_lscv, score_ise, is_fallback = np.nan, np.nan, np.nan, False
@@ -590,31 +557,19 @@ def run_single_trial(dist_name, dist_config, n, I1, I2, rng):
 
 # %%
 # =============================================================================
-# NEW: PARALLEL WORKER FUNCTION
+# PARALLEL WORKER FUNCTION
 # =============================================================================
 
 
 def run_parallel_trial(job_args):
-    """
-    Wrapper function for parallel execution.
-    - Unpacks job arguments.
-    - Creates a trial-specific RNG.
-    - Calls the original `run_single_trial` function.
-    - Handles exceptions within the worker.
-    """
+    """Wrapper for parallel execution: unpacks arguments, creates a
+    trial-specific RNG, and runs a single trial."""
     dist_name, n, trial, I1, I2, child_seed_seq = job_args
 
     try:
-        # 1. Get the distribution config (read-only, safe for parallel)
         dist_config = DISTRIBUTIONS[dist_name]
-
-        # 2. Create the unique, reproducible RNG for this trial
         rng = np.random.default_rng(child_seed_seq)
-
-        # 3. Run the simulation
         trial_results = run_single_trial(dist_name, dist_config, n, I1, I2, rng)
-
-        # 4. Add trial number
         trial_results["trial"] = trial
 
         return trial_results
@@ -627,20 +582,12 @@ def run_parallel_trial(job_args):
 
 # %%
 # =============================================================================
-# MAIN FUNCTION (MODIFIED FOR PARALLELISM)
+# MAIN FUNCTION
 # =============================================================================
 
 
 def main():
-    """
-    Main function to run the full simulation experiment.
-
-    *** MODIFIED ***
-    - Pre-calculates integrals and RNG seeds.
-    - Builds a list of all jobs to run.
-    - Uses ProcessPoolExecutor to run jobs in parallel.
-    - Writes results as they are completed.
-    """
+    """Runs the full simulation experiment with parallel execution."""
     print(f"--- Starting Experiment 1 (Parallel Version) ---")
     print(f"Distributions: {list(DISTRIBUTIONS.keys())}")
     print(f"Sample Sizes: {SAMPLE_SIZES}")
@@ -682,7 +629,7 @@ def main():
         f_out = open(OUTPUT_CSV_FILE, "w", newline="")
         write_header = True
 
-    # --- NEW: Pre-computation Step ---
+    
     print("\nPre-computing Oracle integrals...")
     oracle_integrals_map = {}
     for dist_name, dist_config in DISTRIBUTIONS.items():
@@ -700,7 +647,7 @@ def main():
     master_seed_seq = SeedSequence(MASTER_SEED)
     child_seeds = master_seed_seq.spawn(N_REPLICATIONS)
 
-    # --- NEW: Build Job List ---
+    
     total_runs = len(DISTRIBUTIONS) * len(SAMPLE_SIZES) * N_REPLICATIONS
     jobs_to_run = []
 
@@ -729,7 +676,7 @@ def main():
         f_out.close()
         return
 
-    # --- NEW: Parallel Execution ---
+    
     try:
         # You can set max_workers to a specific number, e.g., max_workers=16
         # By default, it uses all available cores.

@@ -1,3 +1,11 @@
+"""Generate the main LaTeX table for Experiment 2 results."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import DATA_DIR, TABLES_DIR
+
 import pandas as pd
 import os
 
@@ -28,7 +36,6 @@ def get_method_macro(method_name):
 def generate_latex_file(csv_path, output_path):
     df = pd.read_csv(csv_path)
 
-    # MODIFICATION: Added LOGIT_LSCV and REFLECT_LSCV back into the list
     target_methods = [
         "BETA_ROT",
         "BETA_LSCV",
@@ -106,9 +113,9 @@ def generate_latex_file(csv_path, output_path):
 
 if __name__ == "__main__":
     # Run with your specific filename
-    latex_output_path = "tables"  # "data/experiment1/tables"
+    latex_output_path = str(TABLES_DIR)
     os.makedirs(latex_output_path, exist_ok=True)
     generate_latex_file(
-        "data/experiment2/experiment_2_summary.csv",
+        str(DATA_DIR / "experiment2" / "experiment_2_summary.csv"),
         f"{latex_output_path}/experiment_2_table.tex",
     )

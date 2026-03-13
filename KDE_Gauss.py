@@ -1,3 +1,10 @@
+"""Gaussian kernel density estimator with boundary correction for [0, 1] data.
+
+Implements Gaussian KDE with reflection and logit-transformation boundary
+correction methods. Supports bandwidth selection via Silverman's rule of
+thumb and least-squares cross-validation (LSCV).
+"""
+
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -97,7 +104,7 @@ class GaussianKDE:
         self,
         X: np.ndarray,
         bandwidth_selection_method: Optional[str] = None,
-        bandwidth_bounds: Optional[Tuple[float, float]] = None,  # <-- Default is None
+        bandwidth_bounds: Optional[Tuple[float, float]] = None,
         **selection_kwargs: Any,
     ) -> "GaussianKDE":
         """
@@ -528,9 +535,7 @@ class GaussianKDE:
         **kwargs: Any,
     ) -> Union[plt.Axes, Tuple[plt.Figure, plt.Axes]]:
         """
-        Plots the estimated Probability Density Function (PDF) and optionally
-        an overlaid histogram of the original data.
-        (This function is unchanged from your file)
+        Plots the estimated PDF and optionally an overlaid histogram.
         """
         if self.data_ is None or self.n_samples_ == 0:
             raise RuntimeError(

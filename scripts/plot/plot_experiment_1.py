@@ -1,18 +1,19 @@
-# TODO: Name the rule appropriately in the plots
-# TODO: Split LLSCV plot into two plots, one for "hard" and one for "nice" dists
-# TODO: Plot BETA_ROT bandwidth together with oracle bandwidths in a separate plot
-"""
-Analyzes and plots the results from 'simulation_results_full.csv'.
+"""Visualization of Experiment 1 simulation results.
 
-This script is designed to read the "wide" output format from
-'run_experiment_1.py' and "melt" it into a "long" (tidy) format
-for visualization with Seaborn.
-
-It generates three key multi-panel plots:
-1. LSCV Score (Primary Metric) vs. Sample Size
-2. ISE Score (Validation Metric) vs. Sample Size
-3. Computation Time (Speed Metric) vs. Sample Size
+Reads the simulation output from ``simulation_results_full.csv``, reshapes
+it into long (tidy) format, and generates multi-panel line plots for:
+    - LSCV score vs. sample size
+    - ISE score vs. sample size
+    - Computation time vs. sample size
+    - Selected bandwidth vs. sample size
+    - Integration error diagnostics
 """
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import DATA_DIR, PLOTS_DIR
 
 import pandas as pd
 import numpy as np
@@ -39,9 +40,8 @@ sns.set_theme(
         "savefig.dpi": 300,
     },
 )
-# --- End Setup ---
 
-# --- MODIFICATION START: Define consistent Color and Style maps ---
+
 palette = sns.color_palette("deep", 10)
 
 # 1. Define a consistent COLOR_MAP for all 10 methods
@@ -58,7 +58,6 @@ COLOR_MAP = {
     "Reflect (ISE-min)": palette[9],
 }
 
-# --- BUG FIX: Create TWO style maps ---
 # 1. TUPLE map for seaborn's `dashes` argument
 STYLE_MAP_TUPLES = {
     "Fast (Rule)": (4, 1.5),
@@ -71,10 +70,8 @@ STYLE_MAP_STRINGS = {
     "Slow (LSCV)": ":",
     "Benchmark (Oracle)": "-.",
 }
-# --- END BUG FIX ---
 
 
-# --- MODIFICATION START: Moved type to global scope ---
 def type(method):
     """Helper function to get the selector type from a method name."""
     if "LSCV" in method:
@@ -86,10 +83,8 @@ def type(method):
     return "Fast (Rule)"
 
 
-# --- MODIFICATION END ---
 
 
-# --- MODIFICATION: Removed 'style' parameter from signature ---
 def add_emphasis_to_plot(g, df_agg, y_col_name, x_col_name, label_to_emphasize, width):
     """
     Finds a specific line in a FacetGrid and re-plots it with emphasis.
@@ -99,7 +94,6 @@ def add_emphasis_to_plot(g, df_agg, y_col_name, x_col_name, label_to_emphasize, 
     if g.legend:
         for line in g.legend.get_lines():
             if line.get_label() == label_to_emphasize:
-                # --- MODIFICATION: Get color from new COLOR_MAP ---
                 emph_color = COLOR_MAP.get(label_to_emphasize)
                 # Also update the legend line thickness
                 line.set_linewidth(width)
@@ -123,7 +117,6 @@ def add_emphasis_to_plot(g, df_agg, y_col_name, x_col_name, label_to_emphasize, 
                 y_data = df_ax_emph[y_col_name]
                 x_data = df_ax_emph[x_col_name]
 
-                # --- BUG FIX: Get the string linestyle ---
                 emph_style_string = STYLE_MAP_STRINGS.get(type("BETA_ROT"), "--")
 
                 # Ensure 'linestyle' gets the string and 'linewidth' gets the float
@@ -131,16 +124,14 @@ def add_emphasis_to_plot(g, df_agg, y_col_name, x_col_name, label_to_emphasize, 
                     x_data,
                     y_data,
                     color=emph_color,
-                    linestyle=emph_style_string,  # <-- Should be the string
-                    linewidth=width,  # <-- Should be the float
+                    linestyle=emph_style_string,
+                    linewidth=width,
                     marker="o",
                     label=label_to_emphasize,
                     zorder=10,
                 )
-                # --- END BUG FIX ---
 
 
-# --- END NEW HELPER FUNCTION ---
 
 
 def load_and_melt_data(csv_file):
@@ -267,7 +258,6 @@ def load_and_melt_data(csv_file):
     ] = "hard"
 
     # 3. Add Method type (for style)
-    #    --- MODIFICATION: Now uses the global helper function ---
     df_long["type"] = df_long["method"].apply(type)
 
     # 4. Add Kernel type (for hue)
@@ -330,26 +320,21 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
         legend="full",
         lw=2.0,
         markers=True,
-        # --- MODIFICATION: Use TUPLE map for dashes ---
         palette=COLOR_MAP,
         style_order=list(STYLE_MAP_TUPLES.keys()),
         dashes=STYLE_MAP_TUPLES,
-        # --- MODIFICATION END ---
     )
 
-    # --- MODIFICATION: Definitive Y-Axis Fix ---
     g.set(
         xscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )  # Remove buggy figure-level label
+    )
     for ax in g.axes.flat:
         if ax.get_subplotspec().is_first_col():
             ax.set_ylabel("Mean LSCV Score (Lower is Better)")
-    # --- MODIFICATION END ---
 
     g.set_titles(template="{col_name}")
     g.fig.suptitle("LSCV Score (Primary Metric) vs. Sample Size", fontsize=16)
 
-    # --- MODIFICATION: Removed 'style' from call ---
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
             g=g,
@@ -359,7 +344,6 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
             label_to_emphasize=emphasis_config["label"],
             width=emphasis_config["width"],
         )
-    # --- MODIFICATION END ---
 
     sns.move_legend(
         g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=4, frameon=False
@@ -407,28 +391,23 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
         legend="full",
         lw=2.0,
         markers=True,
-        # --- MODIFICATION: Use TUPLE map for dashes ---
         palette=COLOR_MAP,
         style_order=list(STYLE_MAP_TUPLES.keys()),
         dashes=STYLE_MAP_TUPLES,
-        # --- MODIFICATION END ---
     )
 
-    # --- MODIFICATION: Definitive Y-Axis Fix ---
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )  # Remove buggy figure-level label
+    )
     for ax in g.axes.flat:
         if ax.get_subplotspec().is_first_col():
             ax.set_ylabel("Mean ISE Score (Lower is Better)")
-    # --- MODIFICATION END ---
 
     g.set_titles(template="{col_name}")
     g.fig.suptitle(
         "ISE Score (Validation Metric) vs. Sample Size (on 'Nice' Dists)", fontsize=16
     )
 
-    # --- MODIFICATION: Removed 'style' from call ---
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
             g=g,
@@ -438,7 +417,6 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
             label_to_emphasize=emphasis_config["label"],
             width=emphasis_config["width"],
         )
-    # --- MODIFICATION END ---
 
     sns.move_legend(
         g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=4, frameon=False
@@ -478,26 +456,21 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
         legend="full",
         lw=2.0,
         markers=True,
-        # --- MODIFICATION: Use TUPLE map for dashes ---
         palette=COLOR_MAP,
         style_order=list(STYLE_MAP_TUPLES.keys()),
         dashes=STYLE_MAP_TUPLES,
-        # --- MODIFICATION END ---
     )
 
-    # --- MODIFICATION: DefinITIVE Y-Axis Fix ---
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )  # Remove buggy figure-level label
+    )
     for ax in g.axes.flat:
         if ax.get_subplotspec().is_first_col():
             ax.set_ylabel("Mean Computation Time (sec, Lower is Better)")
-    # --- MODIFICATION END ---
 
     g.set_titles(template="{col_name}")
     g.fig.suptitle("Computation Time vs. Sample Size", fontsize=16)
 
-    # --- MODIFICATION: Removed 'style' from call ---
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
             g=g,
@@ -507,7 +480,6 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
             label_to_emphasize=emphasis_config["label"],
             width=emphasis_config["width"],
         )
-    # --- MODIFICATION END ---
 
     sns.move_legend(
         g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=4, frameon=False
@@ -564,28 +536,23 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
         legend="full",
         lw=2.0,
         markers=True,
-        # --- MODIFICATION: Use TUPLE map for dashes ---
         palette=COLOR_MAP,
         style_order=list(STYLE_MAP_TUPLES.keys()),
         dashes=STYLE_MAP_TUPLES,
-        # --- MODIFICATION END ---
     )
 
-    # --- MODIFICATION: Definitive Y-Axis Fix ---
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )  # Remove buggy figure-level label
+    )
     for ax in g.axes.flat:
         if ax.get_subplotspec().is_first_col():
             ax.set_ylabel("Mean Bandwidth ($h$)")
-    # --- MODIFICATION END ---
 
     g.set_titles(template="{col_name}")
     g.fig.suptitle(
         "Bandwidth ($h$) Comparison vs. Sample Size (on 'Nice' Dists)", fontsize=16
     )
 
-    # --- MODIFICATION: Removed 'style' from call ---
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
             g=g,
@@ -595,7 +562,6 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
             label_to_emphasize=emphasis_config["label"],
             width=emphasis_config["width"],
         )
-    # --- MODIFICATION END ---
 
     sns.move_legend(
         g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False
@@ -655,26 +621,21 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
         legend="full",
         lw=2.0,
         markers=True,
-        # --- MODIFICATION: Use TUPLE map for dashes ---
         palette=COLOR_MAP,
         style_order=list(STYLE_MAP_TUPLES.keys()),
         dashes=STYLE_MAP_TUPLES,
-        # --- MODIFICATION END ---
     )
 
-    # --- MODIFICATION: Definitive Y-Axis Fix ---
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )  # Remove buggy figure-level label
+    )
     for ax in g.axes.flat:
         if ax.get_subplotspec().is_first_col():
             ax.set_ylabel("Mean error ($|\int\hat{f}(x)dx-1|$)")
-    # --- MODIFICATION END ---
 
     g.set_titles(template="{col_name}")
     g.fig.suptitle("Integral error of Beta estimate", fontsize=16)
 
-    # --- MODIFICATION: Removed 'style' from call ---
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
             g=g,
@@ -684,7 +645,6 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
             label_to_emphasize=emphasis_config["label"],
             width=emphasis_config["width"],
         )
-    # --- MODIFICATION END ---
 
     sns.move_legend(
         g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False
@@ -746,26 +706,21 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
         legend="full",
         lw=2.0,
         markers=True,
-        # --- MODIFICATION: Use TUPLE map for dashes ---
         palette=COLOR_MAP,
         style_order=list(STYLE_MAP_TUPLES.keys()),
         dashes=STYLE_MAP_TUPLES,
-        # --- MODIFICATION END ---
     )
 
-    # --- MODIFICATION: Definitive Y-Axis Fix ---
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )  # Remove buggy figure-level label
+    )
     for ax in g.axes.flat:
         if ax.get_subplotspec().is_first_col():
             ax.set_ylabel("Mean error ($|\int\hat{f}(x)dx-1|$)")
-    # --- MODIFICATION END ---
 
     g.set_titles(template="{col_name}")
     g.fig.suptitle("Integral error of Beta estimate", fontsize=16)
 
-    # --- MODIFICATION: Removed 'style' from call ---
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
             g=g,
@@ -775,7 +730,6 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
             label_to_emphasize=emphasis_config["label"],
             width=emphasis_config["width"],
         )
-    # --- MODIFICATION END ---
 
     sns.move_legend(
         g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False
@@ -791,9 +745,9 @@ def main():
     Main function to run the analysis.
     """
     # --- Configuration ---
-    INPUT_FILE = "data/experiment1/simulation_results_full.csv"
+    INPUT_FILE = str(DATA_DIR / "experiment1" / "simulation_results_full.csv")
 
-    OUTPUT_DIR = "plots"  #'data/experiment1/plots'
+    OUTPUT_DIR = str(PLOTS_DIR)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     OUTPUT_LSCV_PLOT = f"{OUTPUT_DIR}/LSCV_Score_vs_N.pdf"
     OUTPUT_ISE_PLOT = f"{OUTPUT_DIR}/ISE_Score_vs_N.pdf"
@@ -806,20 +760,15 @@ def main():
     EMPHASIZE_METHOD = True
     EMPHASIZED_LABEL = "Beta (Ref)"
     EMPHASIZED_WIDTH = 3.0
-    # --- MODIFICATION: This is no longer used, so it's commented out ---
-    # EMPHASIZE_STYLE = '--'
-    # --- End Configuration ---
 
     df_long, dist_order = load_and_melt_data(INPUT_FILE)
 
     if df_long is not None:
-        # --- MODIFICATION: Removed 'style' from config dict ---
         emphasis_config = {
             "do_emphasis": EMPHASIZE_METHOD,
             "label": EMPHASIZED_LABEL,
             "width": EMPHASIZED_WIDTH,
         }
-        # --- MODIFICATION END ---
 
         plot_lscv_vs_n(df_long.copy(), dist_order, OUTPUT_LSCV_PLOT, emphasis_config)
         plot_ise_vs_n(df_long.copy(), dist_order, OUTPUT_ISE_PLOT, emphasis_config)

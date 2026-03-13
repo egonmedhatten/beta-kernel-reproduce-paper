@@ -13,6 +13,12 @@ Models tested:
 - Model D: Proposed Rule (Variance + Skewness + Excess Kurtosis)
 """
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import DATA_DIR
+
 import concurrent.futures
 import os
 import time
@@ -68,9 +74,9 @@ class BetaKDE_ModelC(BetaKernelKDE):
 
 N_REPLICATIONS = 1000
 SAMPLE_SIZES = [50, 100, 250, 500, 1000, 2000]
-OUTPUT_CSV_FILE = "data/ablation_study/ablation_results.csv"
+OUTPUT_CSV_FILE = str(DATA_DIR / "ablation_study" / "ablation_results.csv")
 MASTER_SEED = 2026
-MAX_WORKERS = 5  # 32
+MAX_WORKERS = 32
 
 # We only test the distributions where the fallback heuristic is actually triggered.
 DISTRIBUTIONS = {

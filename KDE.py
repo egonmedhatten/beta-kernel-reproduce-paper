@@ -1,8 +1,20 @@
-import warnings  # Import warnings for the fallback
+"""Beta kernel density estimator with boundary correction.
+
+Implements the modified Beta kernel estimator of Chen (1999) for density
+estimation on the [0, 1] interval. Supports bandwidth selection via
+likelihood cross-validation (LCV), least-squares cross-validation (LSCV),
+and a MISE-optimal reference rule with a shape-adaptive fallback.
+
+Reference:
+    Chen, S. X. (1999). Beta kernel estimators for density functions.
+    Computational Statistics & Data Analysis, 31(2), 131-145.
+"""
+
+import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
-import numpy as np  # <-- Make sure numpy is imported
+import numpy as np
 import scipy.integrate
 import scipy.optimize
 import scipy.special as sp
@@ -23,14 +35,12 @@ class BetaKernelKDE:
 
     VALID_SELECTION_METHODS: List[str] = ["LCV", "LSCV", "MISE_rule"]
 
-    # --- Attributes set during/after fit ---
     data_: Optional[np.ndarray] = None
-    data_clipped_: Optional[np.ndarray] = None  # <-- MODIFICATION: Added clipped data
+    data_clipped_: Optional[np.ndarray] = None
     n_samples_: int = 0
     bandwidth: Optional[float] = None
     is_fallback: bool = False
 
-    # --- Attributes set during init ---
     verbose: int
     _bandwidth_param: Optional[Union[float, str]]
     _epsilon: float = 1e-10
@@ -87,15 +97,11 @@ class BetaKernelKDE:
         """
         X = self._validate_data(X)
 
-        # --- MODIFICATION: Store both raw and clipped data ---
-        # self.data_ is the ORIGINAL, un-clipped data
         self.data_ = X
-        # self.data_clipped_ is for LCV/LSCV to prevent crashes on 0s/1s
         self.data_clipped_ = np.clip(X, self._epsilon, 1.0 - self._epsilon)
-        # --- END OF MODIFICATION ---
 
         self.n_samples_ = len(self.data_)
-        self.is_fallback = False  # Reset fallback state on every fit
+        self.is_fallback = False
         self.bandwidth = bandwidth if bandwidth is not None else self.bandwidth
 
         effective_selection_method = bandwidth_selection_method
@@ -281,20 +287,16 @@ class BetaKernelKDE:
 
         X_new_valid = self._validate_data(X_new_arr)
 
-        # Clip evaluation points to be just inside (0, 1) to avoid NaNs
+        # Clip evaluation points to (0, 1) to avoid numerical issues
         X_new_clipped = np.clip(X_new_valid, self._epsilon, 1.0 - self._epsilon)
 
-        # --- MODIFICATION: Use CLIPPED data for kernel evaluation ---
-        # The data points (t_i) must also be clipped to avoid log(0) in the PDF.
         kernel_matrix = self._kernel_matrix(
             X_new_clipped, self.data_clipped_, self.bandwidth
         )
-        # --- END MODIFICATION ---
 
         sum_kernels_per_x = kernel_matrix.sum(axis=1)
         pdf_values = (1 / self.n_samples_) * sum_kernels_per_x
 
-        # Manually set 0s for points outside the [0, 1] range
         pdf_values = np.where((X_new_valid <= 0) | (X_new_valid >= 1), 0.0, pdf_values)
 
         return pdf_values[0] if is_scalar else pdf_values
@@ -308,12 +310,10 @@ class BetaKernelKDE:
         if self.data_ is None or self.n_samples_ == 0:
             return 0.0
 
-        # --- MODIFICATION: Use CLIPPED data for kernel evaluation ---
         sum_kernels = 0.0
         for data_point in self.data_clipped_:
             sum_kernels += self._kernel(x_val, data_point, bandwidth)
         return (1 / self.n_samples_) * sum_kernels
-        # --- END MODIFICATION ---
 
     def _lcv_objective(self, bandwidth: float) -> float:
         """
@@ -338,7 +338,6 @@ class BetaKernelKDE:
                 unit="pt",
             )
 
-        # --- MODIFICATION: Use CLIPPED data for stability ---
         data = self.data_clipped_
         for i in range_i:
             sum_kernels = 0.0
@@ -349,7 +348,6 @@ class BetaKernelKDE:
         k_self = np.zeros(n_samples)
         for i in range(n_samples):
             k_self[i] = self._kernel(data[i], data[i], bandwidth)
-        # --- END MODIFICATION ---
 
         log_likelihood_sum = 0.0
         for i in range(n_samples):
@@ -372,9 +370,7 @@ class BetaKernelKDE:
         if n_samples < 2:
             return np.inf
 
-        # --- MODIFICATION: Use CLIPPED data for stability ---
         data = self.data_clipped_
-        # --- END MODIFICATION ---
 
         # --- Term 1: Integral of f(x)^2 ---
         x_grid = np.linspace(1e-5, 1.0 - 1e-5, integration_points)
@@ -436,9 +432,7 @@ class BetaKernelKDE:
 
         # --- Stage 1: Define Search Bounds (n-dependent) ---
         n = self.n_samples_
-        # --- MODIFICATION: Use CLIPPED data for std calculation for stability ---
         data_std = np.std(self.data_clipped_, ddof=1)
-        # --- END MODIFICATION ---
         final_search_bounds = bounds
 
         if data_std > 1e-8:
@@ -528,12 +522,10 @@ class BetaKernelKDE:
 
         NOTE: This MUST be called on data *strictly* within (0, 1).
         """
-        # --- MODIFICATION: Check size of FILTERED data ---
         if X_filtered.size == 0:
             raise ValueError(
                 "No data strictly within (0, 1). Cannot estimate Beta parameters."
             )
-        # --- END MODIFICATION ---
 
         mean_x = np.mean(X_filtered)
         var_x = np.var(X_filtered)
@@ -607,14 +599,10 @@ class BetaKernelKDE:
         h_final: float
         is_fallback: bool
 
-        # --- MODIFICATION: Define filtered data ONCE ---
         X_filtered = self.data_[(self.data_ > 0) & (self.data_ < 1)]
-        # --- END MODIFICATION ---
 
         try:
-            # --- MODIFICATION: Use FILTERED raw data ---
             ahat, bhat = self._estimate_beta_params(X_filtered)
-            # --- END MODIFICATION ---
 
             if not (ahat > 1.5 and bhat > 1.5 and (ahat + bhat) > 3):
                 raise ValueError(
@@ -661,7 +649,6 @@ class BetaKernelKDE:
             is_fallback = False
 
         except (ValueError, RuntimeError) as e:
-            # --- MODIFICATION: Fix fallback logic ---
             # We must have ahat, bhat to calculate fallback
             if not (hasattr(self, "ahat") and hasattr(self, "bhat")):
                 # Try to estimate again, this may fail
@@ -680,7 +667,6 @@ class BetaKernelKDE:
                     f"MISE Rule failed: {e}. Using fallback rule. Optimality lost.",
                     RuntimeWarning,
                 )
-            # --- END MODIFICATION ---
 
         self.fallback = is_fallback
         self.bandwidth = h_final
@@ -736,18 +722,16 @@ class BetaKernelKDE:
         )
 
         if show_histogram:
-            # --- MODIFICATION: Plot RAW data and set range ---
             ax.hist(
-                self.data_,  # Use the original, unclipped data
+                self.data_,
                 bins=bins,
                 density=True,
                 alpha=0.5,
                 label="Data Histogram",
                 color="gray",
                 edgecolor="black",
-                range=(0, 1),  # Ensure bins align to [0, 1]
+                range=(0, 1),
             )
-            # --- END MODIFICATION ---
 
         ax.set_title("Beta Kernel Density Estimation")
         ax.set_xlabel("x")
@@ -781,8 +765,6 @@ if __name__ == "__main__":
 
     np.random.seed(42)
     data: np.ndarray = np.random.beta(a=3, b=5, size=100)
-
-    # Add 0s and 1s to test clipping
     data[0] = 0.0
     data[1] = 1.0
 
@@ -809,7 +791,7 @@ if __name__ == "__main__":
         label="Data Histogram",
         color="gray",
         edgecolor="black",
-        range=(0, 1),  # <-- MODIFICATION: Add range to match
+        range=(0, 1),
     )
 
     print("\nStarting bandwidth selection for all methods...")

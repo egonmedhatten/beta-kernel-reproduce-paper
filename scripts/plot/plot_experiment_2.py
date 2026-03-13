@@ -1,3 +1,11 @@
+"""Visualization of Experiment 2 real-world density estimation results."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import DATA_DIR, PLOTS_DIR
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,17 +14,9 @@ from ucimlrepo import fetch_ucirepo
 import warnings
 import os
 
-# --- Imports Moved to Top ---
-try:
-    from KDE import BetaKernelKDE
-    from KDE_Gauss import GaussianKDE
-except ImportError:
-    print("Error: Could not import KDE and KDE_Gauss.py.")
-    print("Please place this script in the same directory as your KDE class files.")
-    exit()
-# --- End Imports ---
+from KDE import BetaKernelKDE
+from KDE_Gauss import GaussianKDE
 
-# --- 1. Publication Grade Styling ---
 plt.switch_backend("Agg")
 
 # Use a clean sans-serif font (Arial/Helvetica are standard for papers)
@@ -35,7 +35,7 @@ plt.rcParams.update(
         "legend.fontsize": 10,
         "xtick.labelsize": 10,
         "ytick.labelsize": 10,
-        "svg.fonttype": "none",  # Text editable in Illustrator/Inkscape
+        "svg.fonttype": "none",
         "figure.dpi": 300,
         "savefig.dpi": 300,
     }
@@ -43,14 +43,13 @@ plt.rcParams.update(
 
 sns.set_theme(
     context="paper",
-    style="ticks",  # 'ticks' is often cleaner than 'whitegrid' for publication
+    style="ticks",
     palette="deep",
     rc={"axes.spines.right": False, "axes.spines.top": False},
 )
 
-# --- 2. Data Mappings ---
+# --- Data Mappings ---
 
-# Map variable names to Human-Readable Titles
 DATASET_TITLES = {
     "PctKids2Par": "Children with Two Parents (%)",
     "PctPopUnderPov": "Population Under Poverty (%)",
@@ -66,23 +65,18 @@ method_rename_map = {
     "REFLECT_LSCV": "Reflect (LSCV)",
 }
 
-# Define colors (High contrast)
-# Using a slightly customized palette to ensure the "Ref" stands out
+# Color palette
 palette = sns.color_palette("deep", 10)
 COLOR_MAP = {
-    "Beta (Ref)": "#d62728",  # Strong Red for the proposed method
-    "Beta (LSCV)": palette[0],  # Blue
-    "Logit (Silverman)": palette[2],  # Green
-    "Logit (LSCV)": palette[4],  # Purple
-    "Reflect (Silverman)": palette[1],  # Orange
-    "Reflect (LSCV)": palette[5],  # Brown
+    "Beta (Ref)": "#d62728",
+    "Beta (LSCV)": palette[0],
+    "Logit (Silverman)": palette[2],
+    "Logit (LSCV)": palette[4],
+    "Reflect (Silverman)": palette[1],
+    "Reflect (LSCV)": palette[5],
 }
 
 
-# --- IMPORTANT: Style Strategy ---
-# Proposed Method -> Solid Line (Easiest to read)
-# Rule-of-thumb competitors -> Dashed
-# LSCV competitors -> Dotted
 def get_style_kwargs(method_name):
     if method_name == "BETA_ROT":
         return {"linestyle": "-", "linewidth": 2.5, "zorder": 10, "alpha": 1.0}
@@ -138,7 +132,7 @@ def fetch_data():
 def main():
     print("Loading results...")
     try:
-        df_summary = pd.read_csv("data/experiment2/experiment_2_summary.csv")
+        df_summary = pd.read_csv(str(DATA_DIR / "experiment2" / "experiment_2_summary.csv"))
     except FileNotFoundError:
         print("Error: CSV not found.")
         return
@@ -250,7 +244,7 @@ def main():
     # Add extra space at bottom for legend
     plt.subplots_adjust(bottom=0.12)
 
-    OUTPUT_DIR = "plots"
+    OUTPUT_DIR = str(PLOTS_DIR)
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_filename = f"{OUTPUT_DIR}/experiment_2_visual_fits.pdf"
     plt.savefig(

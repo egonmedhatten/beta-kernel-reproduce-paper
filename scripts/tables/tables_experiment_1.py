@@ -1,18 +1,21 @@
-"""
-Analyzes the 'simulation_results_full.csv' file.
+"""Generate LaTeX summary tables from Experiment 1 simulation results.
 
-This script loads the raw, "wide" output from run_experiment_1.py.
-It splits the data into "Nice", "Hard", and "Bimodal" distributions
-and generates THREE SEPARATE main summary tables (LSCV, ISE, Time).
-
-It also prints full "Appendix" tables for all configurations.
+Loads the raw output from ``experiment_1_parallell.py``, splits data into
+"nice", "hard", and "bimodal" distribution groups, and generates separate
+publication-ready LaTeX tables for LSCV scores, ISE scores, and computation
+times. Also produces detailed appendix tables.
 """
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import DATA_DIR, TABLES_DIR
 
 import pandas as pd
 import numpy as np
 import warnings
 import re
-import sys
 import os
 from scipy import stats
 from tabulate import tabulate
@@ -80,7 +83,6 @@ def format_dist_names_for_index(index_df):
     return index_df
 
 
-# --- HELPER FUNCTION (MODIFIED) ---
 def get_stats_for_metric(df_raw, methods, ref_method, metric_name, metric_col):
     """
     Calculates the mean and p-value for a *single* metric
@@ -208,9 +210,7 @@ def create_metric_table(
     # --- 4. Create LaTeX Version ---
     df_latex = df_formatted.copy()
 
-    # --- BUG FIX: Use .map(lambda...) to map index ---
     df_latex.index = df_latex.index.map(lambda m: LATEX_MACRO_MAP.get(m, m))
-    # --- END BUG FIX ---
 
     df_latex.index.name = "Method"
 
@@ -333,9 +333,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         file_path = sys.argv[1]
     else:
-        file_path = "data/experiment1/simulation_results_full.csv"
+        file_path = str(DATA_DIR / "experiment1" / "simulation_results_full.csv")
 
-    latex_output_path = "tables"  # "data/experiment1/tables"
+    latex_output_path = str(TABLES_DIR)
     os.makedirs(latex_output_path, exist_ok=True)
 
     method_order = [
@@ -371,7 +371,6 @@ if __name__ == "__main__":
 
         data_groups = {"nice": df_nice, "bimodal": df_bimodal, "hard": df_hard}
 
-        # --- MODIFICATION: Call the new single-metric table functions ---
         create_metric_table(
             data_groups,
             method_order,
@@ -401,7 +400,6 @@ if __name__ == "__main__":
             os.path.join(latex_output_path, "main_table_time.tex"),
             include_hard_dist=True,
         )
-        # --- END MODIFICATION ---
 
         # --- Appendix tables are still generated as before ---
         print_appendix_tables(raw_data, method_order, latex_path=latex_output_path)

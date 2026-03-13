@@ -1,3 +1,11 @@
+"""Generate appendix tables for Experiment 2 (p-values and log-likelihood)."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import DATA_DIR, TABLES_DIR
+
 import pandas as pd
 import os
 
@@ -150,9 +158,8 @@ def generate_appendix_tables(csv_path, output_dir):
 
 
 if __name__ == "__main__":
-    # Adjust paths as needed
-    csv_file = "data/experiment2/experiment_2_summary.csv"  # or 'data/experiment2/experiment_2_summary.csv'
-    output_folder = "tables"
+    csv_file = str(DATA_DIR / "experiment2" / "experiment_2_summary.csv")
+    output_folder = str(TABLES_DIR)
     os.makedirs(output_folder, exist_ok=True)
 
     generate_appendix_tables(csv_file, output_folder)

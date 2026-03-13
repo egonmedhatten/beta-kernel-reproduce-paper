@@ -1,37 +1,22 @@
-"""
-Main script for running the "Bulletproof" Experiment 2: Real-World Data.
+"""Experiment 2: Real-world density estimation on UCI crime data.
 
-This script executes the 6-Method "Practical" Showdown on the
-UCI Communities and Crime dataset.
+Compares six kernel density estimators on three variables from the UCI
+Communities and Crime dataset. Uses true leave-one-out cross-validation
+for the LSCV score and 10x10 repeated CV for log-likelihood tests.
 
----
-MODIFICATION:
-This version has been updated to use the true, computationally-intensive
-Leave-One-Out (LOO) calculation for the `lscv_score` helper function.
-This aligns perfectly with LSCV theory but is O(n^2) and will be
-significantly slower than the previous 10-fold approximation.
+Methods compared:
+    - Fast rules: BETA_ROT, LOGIT_SILV, REFLECT_SILV
+    - Slow LSCV:  BETA_LSCV, LOGIT_LSCV, REFLECT_LSCV
 
-The 10x10 repeated CV for the statistical tests (log_likelihood and
-mean_heldout_density) remains unchanged.
-
-MODIFICATION 2 (NEW):
-The script now records the `is_fallback` attribute for the BETA_ROT
-method during both the full-data fit and the 10x10 CV,
-to test the hypothesis about the fallback rule being triggered.
----
-
-It compares 6 competitors:
-- Fast Rules: BETA_ROT, LOGIT_SILV, REFLECT_SILV
-- Slow LSCV: BETA_LSCV, LOGIT_LSCV, REFLECT_LSCV
-
-It evaluates them on two key metrics:
-1. LSCV Score (our universal, stable metric)
-2. 10x10 Repeated Cross-Validated Log-Likelihood (a robust predictive metric)
-
-It also records computation time and runs robust non-parametric tests
-(Wilcoxon signed-rank test) to check for statistical significance
+Statistical significance is assessed via Wilcoxon signed-rank tests
 against the proposed BETA_ROT rule.
 """
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import REPO_ROOT, DATA_DIR, PLOTS_DIR
 
 import os
 import time
@@ -39,7 +24,6 @@ import warnings
 
 import matplotlib.pyplot as plt
 
-# FIXME: Make the plots in 'svg' format for vector quality.
 import numpy as np
 import pandas as pd
 from scipy.integrate import quad
@@ -48,16 +32,8 @@ from sklearn.model_selection import KFold
 from tqdm.auto import tqdm
 from ucimlrepo import fetch_ucirepo
 
-# Import your custom KDE classes
-# We assume KDE.py and KDE_Gauss.py are in the same directory
-try:
-    from KDE import BetaKernelKDE
-    from KDE_Gauss import GaussianKDE
-except ImportError:
-    print(
-        "Error: Could not import KDE and KDE_Gauss.py. Make sure they are in the same directory."
-    )
-    exit()
+from KDE import BetaKernelKDE
+from KDE_Gauss import GaussianKDE
 
 # --- Global Settings ---
 N_FOLDS = 10
@@ -68,7 +44,6 @@ EPSILON = 1e-300
 
 # --- Competitor Method Definitions ---
 # The 6 practical methods for the real-world experiment
-# FIXME: Set nice colors and linestyles for plotting later
 METHODS_TO_RUN = {
     "BETA_ROT": {
         "class": BetaKernelKDE,
@@ -104,13 +79,8 @@ METHODS_TO_RUN = {
 
 def lscv_score(kde, n_folds=None):
     """
-    Calculates the LSCV score for a *fitted* KDE instance.
-    This is the "universal metric" function.
-
-    --- MODIFICATION ---
-    This function now computes the true Leave-One-Out (LOO) sum
-    for Term 2, as requested. This is O(n^2) and will be slow.
-    The `n_folds` argument is now ignored.
+    Calculates the LSCV score for a *fitted* KDE instance using true
+    leave-one-out cross-validation for Term 2. This is O(n^2).
     """
     bandwidth = kde.bandwidth
     data = kde.data_
@@ -126,8 +96,7 @@ def lscv_score(kde, n_folds=None):
         return np.nan
     n = len(data)
 
-    # --- Term 1: integral(f_hat^2) ---
-    # This is calculated on the KDE fitted on all n points
+    # Term 1: integral of f_hat^2
     try:
         integrand_sq = lambda x: kde.pdf(x) ** 2
         term1, _ = quad(integrand_sq, 0, 1, limit=50, epsabs=1e-4)
@@ -136,7 +105,7 @@ def lscv_score(kde, n_folds=None):
     except Exception:
         term1 = np.nan
 
-    # --- Term 2: (2/n) * sum(f_hat_loo) (TRUE LOO CALCULATION) ---
+    # Term 2: LOO sum
     term2_sum = 0
 
     # This loop is O(n^2)
@@ -172,7 +141,6 @@ def lscv_score(kde, n_folds=None):
     except Exception as e:
         print(f"Warning: LOO calculation failed. Error: {e}")
         term2 = np.nan
-    # --- END MODIFIED BLOCK ---
 
     if np.isnan(term1) or np.isnan(term2):
         return np.nan
@@ -208,7 +176,7 @@ def run_comparison(data, data_name):
             kde = config["class"](**config["init_args"])
 
             start_time = time.perf_counter()
-            kde.fit(data)  # Note: data is now un-filtered
+            kde.fit(data)
             comp_time = time.perf_counter() - start_time
 
             if kde.bandwidth is None or not np.isfinite(kde.bandwidth):
@@ -216,18 +184,13 @@ def run_comparison(data, data_name):
 
             fitted_kdes[method_name] = kde
 
-            # --- MODIFIED CALL ---
             # Calculate LSCV score (on full data) using the new
             # true LOO function. This will be SLOW.
             score_lscv = lscv_score(kde)
-            # --- END MODIFICATION ---
 
-            # --- START NEW BLOCK ---
-            # Record if the fallback rule was used for the full data fit
             is_fallback_full = False
             if method_name == "BETA_ROT":
                 is_fallback_full = getattr(kde, "is_fallback", False)
-            # --- END NEW BLOCK ---
 
             results_list.append(
                 {
@@ -236,7 +199,7 @@ def run_comparison(data, data_name):
                     "bandwidth": kde.bandwidth,
                     "comp_time_sec": comp_time,
                     "lscv_score": score_lscv,
-                    "is_fallback_full": is_fallback_full,  # <-- ADDED
+                    "is_fallback_full": is_fallback_full,
                 }
             )
 
@@ -249,15 +212,13 @@ def run_comparison(data, data_name):
                     "bandwidth": np.nan,
                     "comp_time_sec": np.nan,
                     "lscv_score": np.nan,
-                    "is_fallback_full": np.nan,  # <-- ADDED
+                    "is_fallback_full": np.nan,
                 }
             )
 
     df_summary = pd.DataFrame(results_list)
 
     # --- 2. Calculate 10x10 Repeated CV Metrics ---
-    # This part is unchanged. It still uses the 10-fold CV
-    # approximation for the statistical tests.
     print(
         f"\nCalculating {N_REPETITIONS}x{N_FOLDS} Repeated CV Metrics for all 6 methods..."
     )
@@ -290,12 +251,9 @@ def run_comparison(data, data_name):
                     # This is just mean(f_hat_fold(X_test))
                     mean_density = np.mean(pdf_values)
 
-                    # --- START NEW BLOCK ---
-                    # Record if the fallback rule was used for this fold
                     is_fallback_fold = False
                     if method_name == "BETA_ROT":
                         is_fallback_fold = getattr(kde_fold, "is_fallback", False)
-                    # --- END NEW BLOCK ---
 
                     fold_results.append(
                         {
@@ -305,7 +263,7 @@ def run_comparison(data, data_name):
                             "method": method_name,
                             "log_likelihood": mean_log_lik,
                             "mean_heldout_density": mean_density,
-                            "is_fallback": is_fallback_fold,  # <-- ADDED
+                            "is_fallback": is_fallback_fold,
                         }
                     )
 
@@ -318,14 +276,13 @@ def run_comparison(data, data_name):
                             "method": method_name,
                             "log_likelihood": np.nan,
                             "mean_heldout_density": np.nan,
-                            "is_fallback": np.nan,  # <-- ADDED
+                            "is_fallback": np.nan,
                         }
                     )
 
     df_per_fold = pd.DataFrame(fold_results)
 
     # Aggregate scores and merge
-    # --- MODIFIED BLOCK (added 'is_fallback' to aggregation) ---
     df_agg_summary = (
         df_per_fold.groupby("method")[
             ["log_likelihood", "mean_heldout_density", "is_fallback"]
@@ -333,16 +290,14 @@ def run_comparison(data, data_name):
         .mean()
         .reset_index()
     )
-    # Rename the aggregated fallback column for clarity
     df_agg_summary.rename(columns={"is_fallback": "is_fallback_cv_mean"}, inplace=True)
-    # --- END MODIFIED BLOCK ---
 
     df_summary = df_summary.merge(df_agg_summary, on="method", how="left")
 
     return df_summary, df_per_fold, fitted_kdes
 
 
-def plot_densities(fitted_kdes, data, data_name, output_dir="data/experiment2/plots"):
+def plot_densities(fitted_kdes, data, data_name, output_dir=str(PLOTS_DIR)):
     """
     Plots the density estimates for each method and saves the plot.
     """
@@ -414,10 +369,7 @@ def main():
 
     # 3. Run the comparison for each dataset
     for data_name, data_vector in datasets_to_test.items():
-        # --- THIS IS THE FIX ---
-        # Do NOT filter. Let the KDEs handle 0s and 1s.
         data_to_run = data_vector
-        # --- END FIX ---
         if len(data_to_run) < 200:
             print(f"\nSkipping {data_name}: Not enough data (n={len(data_to_run)})")
             continue
@@ -536,10 +488,10 @@ def main():
     )
 
     # --- 6. Save to CSV ---
-    summary_file = "data/experiment2/experiment_2_summary.csv"
-    per_fold_file = "data/experiment2/per_fold/experiment_2_per_fold_results.csv"
-    os.makedirs("data/experiment2", exist_ok=True)
-    os.makedirs("data/experiment2/per_fold", exist_ok=True)
+    summary_file = str(DATA_DIR / "experiment2" / "experiment_2_summary.csv")
+    per_fold_file = str(DATA_DIR / "experiment2" / "per_fold" / "experiment_2_per_fold_results.csv")
+    os.makedirs(str(DATA_DIR / "experiment2"), exist_ok=True)
+    os.makedirs(str(DATA_DIR / "experiment2" / "per_fold"), exist_ok=True)
 
     # Re-order columns to put new fallback columns in a logical place
     all_cols = list(df_final_summary.columns)

@@ -1,11 +1,19 @@
+"""Export Experiment 2 summary results to a supplementary CSV file."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from _paths import DATA_DIR, SUPPLEMENTARY_DIR
+
 import pandas as pd
 import os
 
 
 def export_experiment_2_csv():
     # 1. Configuration
-    input_file = "data/experiment2/experiment_2_summary.csv"
-    output_file = "supplementary-results/supplementary_experiment_2_results.csv"
+    input_file = str(DATA_DIR / "experiment2" / "experiment_2_summary.csv")
+    output_file = str(SUPPLEMENTARY_DIR / "supplementary_experiment_2_results.csv")
 
     if not os.path.exists(input_file):
         print(f"Error: Input file '{input_file}' not found.")
