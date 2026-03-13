@@ -16,26 +16,16 @@ from _paths import DATA_DIR, PLOTS_DIR
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from _plot_styles import setup_theme, ABLATION_STYLES
+
+setup_theme()
+
 # --- Configuration ---
 INPUT_CSV = str(DATA_DIR / "ablation_study" / "ablation_results.csv")
 OUTPUT_PDF = str(PLOTS_DIR / "ablation_delta_plot.pdf")
 
 MODELS = ["MODEL_A", "MODEL_B", "MODEL_C"]
 PROPOSED = "MODEL_D"
-MODEL_NAMES = {
-    "MODEL_A": "Baseline: Var Only",
-    "MODEL_B": "Baseline: Var + Skew",
-    "MODEL_C": "Baseline: Var + Kurt",
-}
-
-# --- The "Dual-Format" Style Dictionary ---
-# Colors for online visibility, distinct linestyles/markers for B&W print readability.
-# Using Paul Tol's vibrant colorblind-safe hex codes.
-STYLES = {
-    "MODEL_A": {"color": "#EE6677", "linestyle": "dotted", "marker": "o"},  # Red
-    "MODEL_B": {"color": "#228833", "linestyle": "dashed", "marker": "s"},  # Green
-    "MODEL_C": {"color": "#4477AA", "linestyle": "dashdot", "marker": "^"}, # Blue
-}
 
 def main():
     print("\n===========================================================")
@@ -69,14 +59,15 @@ def main():
             base_med = dist_data[f"{m}_lscv"]
             # Delta = Proposed - Baseline. Negative means Proposed is better.
             delta = prop_med - base_med
+            style = ABLATION_STYLES[m]
             
             ax.plot(
                 n_vals, 
                 delta, 
-                label=MODEL_NAMES[m], 
-                color=STYLES[m]["color"], 
-                linestyle=STYLES[m]["linestyle"], 
-                marker=STYLES[m]["marker"],
+                label=style["label"], 
+                color=style["color"], 
+                linestyle=style["linestyle"], 
+                marker=style["marker"],
                 markersize=6,
                 linewidth=2
             )

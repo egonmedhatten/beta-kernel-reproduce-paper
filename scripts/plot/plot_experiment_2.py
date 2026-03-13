@@ -17,36 +17,9 @@ import os
 from KDE import BetaKernelKDE
 from KDE_Gauss import GaussianKDE
 
-plt.switch_backend("Agg")
+from _plot_styles import setup_theme, METHOD_STYLES
 
-# Use a clean sans-serif font (Arial/Helvetica are standard for papers)
-plt.rcParams.update(
-    {
-        "font.family": "sans-serif",
-        "font.sans-serif": [
-            "Arial",
-            "DejaVu Sans",
-            "Liberation Sans",
-            "Bitstream Vera Sans",
-        ],
-        "font.size": 12,
-        "axes.titlesize": 14,
-        "axes.labelsize": 12,
-        "legend.fontsize": 10,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "svg.fonttype": "none",
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-    }
-)
-
-sns.set_theme(
-    context="paper",
-    style="ticks",
-    palette="deep",
-    rc={"axes.spines.right": False, "axes.spines.top": False},
-)
+setup_theme()
 
 # --- Data Mappings ---
 
@@ -64,26 +37,6 @@ method_rename_map = {
     "REFLECT_SILV": "Reflect (Silverman)",
     "REFLECT_LSCV": "Reflect (LSCV)",
 }
-
-# Color palette
-palette = sns.color_palette("deep", 10)
-COLOR_MAP = {
-    "Beta (Ref)": "#d62728",
-    "Beta (LSCV)": palette[0],
-    "Logit (Silverman)": palette[2],
-    "Logit (LSCV)": palette[4],
-    "Reflect (Silverman)": palette[1],
-    "Reflect (LSCV)": palette[5],
-}
-
-
-def get_style_kwargs(method_name):
-    if method_name == "BETA_ROT":
-        return {"linestyle": "-", "linewidth": 2.5, "zorder": 10, "alpha": 1.0}
-    elif "LSCV" in method_name:
-        return {"linestyle": ":", "linewidth": 1.8, "zorder": 5, "alpha": 0.9}
-    else:
-        return {"linestyle": "--", "linewidth": 1.8, "zorder": 6, "alpha": 0.9}
 
 
 METHOD_CONFIG = {
@@ -178,8 +131,15 @@ def main():
 
             config = METHOD_CONFIG[method_name]
             label_text = method_rename_map.get(method_name, method_name)
-            color = COLOR_MAP.get(label_text, "black")
-            style_kwargs = get_style_kwargs(method_name)
+            style = METHOD_STYLES.get(label_text, {})
+            color = style.get("color", "black")
+            linestyle = style.get("linestyle", "-")
+            marker = style.get("marker", None)
+            # Proposed method gets a thicker line and higher z-order
+            is_proposed = (method_name == "BETA_ROT")
+            lw = 2.5 if is_proposed else 1.8
+            zorder = 10 if is_proposed else 5
+            alpha = 1.0 if is_proposed else 0.9
 
             try:
                 kde = config["class"](**config["init_args"])
@@ -187,7 +147,12 @@ def main():
                 kde.fit(data_vector)
                 pdf_plot = kde.pdf(x_plot)
 
-                ax.plot(x_plot, pdf_plot, label=label_text, color=color, **style_kwargs)
+                ax.plot(
+                    x_plot, pdf_plot, label=label_text, color=color,
+                    linestyle=linestyle, linewidth=lw, zorder=zorder,
+                    alpha=alpha, marker=marker, markevery=50,
+                    markersize=5,
+                )
 
             except Exception as e:
                 print(f"Skipping {method_name}: {e}")

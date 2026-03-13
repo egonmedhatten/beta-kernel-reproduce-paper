@@ -24,63 +24,16 @@ import warnings
 from tqdm.auto import tqdm
 import os
 
-# --- Matplotlib Setup ---
-plt.switch_backend("Agg")
-sns.set_theme(
-    context="paper",
-    style="whitegrid",
-    palette="deep",
-    font_scale=1.1,
-    rc={
-        "grid.linestyle": ":",
-        "grid.color": "0.8",
-        "axes.spines.right": False,
-        "axes.spines.top": False,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-    },
+from _plot_styles import (
+    setup_theme,
+    METHOD_STYLES,
+    get_color_map,
+    get_seaborn_dashes,
+    get_seaborn_markers,
+    get_method_order,
 )
 
-
-palette = sns.color_palette("deep", 10)
-
-# 1. Define a consistent COLOR_MAP for all 10 methods
-COLOR_MAP = {
-    "Beta (LSCV)": palette[0],
-    "Reflect (Silverman)": palette[1],
-    "Logit (Silverman)": palette[2],
-    "Beta (Ref)": palette[3],
-    "Logit (LSCV)": palette[4],
-    "Reflect (LSCV)": palette[5],
-    "Beta (Oracle)": palette[6],
-    "Beta (ISE)": palette[7],
-    "Logit (ISE-min)": palette[8],
-    "Reflect (ISE-min)": palette[9],
-}
-
-# 1. TUPLE map for seaborn's `dashes` argument
-STYLE_MAP_TUPLES = {
-    "Fast (Rule)": (4, 1.5),
-    "Slow (LSCV)": (1, 1),
-    "Benchmark (Oracle)": (5, 1, 1, 1),
-}
-# 2. STRING map for matplotlib's `linestyle` argument
-STYLE_MAP_STRINGS = {
-    "Fast (Rule)": "--",
-    "Slow (LSCV)": ":",
-    "Benchmark (Oracle)": "-.",
-}
-
-
-def type(method):
-    """Helper function to get the selector type from a method name."""
-    if "LSCV" in method:
-        return "Slow (LSCV)"
-    if "ISE" in method:
-        return "Benchmark (Oracle)"
-    if "ORACLE" in method:
-        return "Benchmark (Oracle)"
-    return "Fast (Rule)"
+setup_theme()
 
 
 
@@ -89,47 +42,38 @@ def add_emphasis_to_plot(g, df_agg, y_col_name, x_col_name, label_to_emphasize, 
     """
     Finds a specific line in a FacetGrid and re-plots it with emphasis.
     """
-    # 1. Find the correct color/style from the legend
-    emph_color = None
+    style = METHOD_STYLES.get(label_to_emphasize)
+    if style is None:
+        return
+
+    emph_color = style["color"]
+
+    # Update legend line thickness
     if g.legend:
         for line in g.legend.get_lines():
             if line.get_label() == label_to_emphasize:
-                emph_color = COLOR_MAP.get(label_to_emphasize)
-                # Also update the legend line thickness
                 line.set_linewidth(width)
-                break  # Found it
+                break
 
-    # 2. Iterate over all axes and re-plot the emphasized line on top
-    if emph_color:
-        # Get the data for the emphasized method
-        df_emph = df_agg[df_agg["Method"] == label_to_emphasize].copy()
+    # Re-plot the emphasized line on top of every facet
+    df_emph = df_agg[df_agg["Method"] == label_to_emphasize].copy()
+    for ax in g.axes.flat:
+        dist_name_on_plot = ax.get_title()
+        if not dist_name_on_plot:
+            continue
 
-        # g.axes is a 1D array when col_wrap is used
-        for ax in g.axes.flat:
-            dist_name_on_plot = ax.get_title()
-            if not dist_name_on_plot:  # Skip empty facets
-                continue
-
-            # Filter data for this specific axis
-            df_ax_emph = df_emph[df_emph["dist_name"] == dist_name_on_plot]
-
-            if not df_ax_emph.empty:
-                y_data = df_ax_emph[y_col_name]
-                x_data = df_ax_emph[x_col_name]
-
-                emph_style_string = STYLE_MAP_STRINGS.get(type("BETA_ROT"), "--")
-
-                # Ensure 'linestyle' gets the string and 'linewidth' gets the float
-                ax.plot(
-                    x_data,
-                    y_data,
-                    color=emph_color,
-                    linestyle=emph_style_string,
-                    linewidth=width,
-                    marker="o",
-                    label=label_to_emphasize,
-                    zorder=10,
-                )
+        df_ax_emph = df_emph[df_emph["dist_name"] == dist_name_on_plot]
+        if not df_ax_emph.empty:
+            ax.plot(
+                df_ax_emph[x_col_name],
+                df_ax_emph[y_col_name],
+                color=emph_color,
+                linestyle=style["linestyle"],
+                linewidth=width,
+                marker=style["marker"],
+                label=label_to_emphasize,
+                zorder=10,
+            )
 
 
 
@@ -207,7 +151,7 @@ def load_and_melt_data(csv_file):
 
         df_long = df_long.merge(df_fallback, on=id_vars + ["method"], how="left")
         # Ensure 'is_fallback' is False for all other methods
-        df_long["is_fallback"].fillna(False, inplace=True)
+        df_long["is_fallback"] = df_long["is_fallback"].fillna(False)
 
     # --- Add Helper Columns for Plotting ---
 
@@ -257,10 +201,7 @@ def load_and_melt_data(csv_file):
         "dist_type",
     ] = "hard"
 
-    # 3. Add Method type (for style)
-    df_long["type"] = df_long["method"].apply(type)
-
-    # 4. Add Kernel type (for hue)
+    # 3. Add Kernel type (for hue)
     def kernel_type(method):
         if "BETA" in method:
             return "Beta"
@@ -299,7 +240,7 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
     print(f"Generating LSCV plot: {output_file}...")
 
     df_agg = (
-        df_long.groupby(["dist_name", "n", "Method", "type"])
+        df_long.groupby(["dist_name", "n", "Method"])
         .mean(numeric_only=True)
         .reset_index()
     )
@@ -310,7 +251,7 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
         x="n",
         y="lscv_score",
         hue="Method",
-        style="type",
+        style="Method",
         col="dist_name",
         col_wrap=3,
         col_order=dist_order,
@@ -319,10 +260,10 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
         facet_kws={"sharey": False, "despine": True},
         legend="full",
         lw=2.0,
-        markers=True,
-        palette=COLOR_MAP,
-        style_order=list(STYLE_MAP_TUPLES.keys()),
-        dashes=STYLE_MAP_TUPLES,
+        palette=get_color_map(),
+        style_order=get_method_order(),
+        dashes=get_seaborn_dashes(),
+        markers=get_seaborn_markers(),
     )
 
     g.set(
@@ -364,7 +305,7 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
     df_nice = df_long[df_long["dist_type"] == "nice"].copy()
     nice_dist_order = [d for d in dist_order if d in df_nice["dist_name"].unique()]
     df_agg = (
-        df_nice.groupby(["dist_name", "n", "Method", "type"])
+        df_nice.groupby(["dist_name", "n", "Method"])
         .mean(numeric_only=True)
         .reset_index()
     )
@@ -381,7 +322,7 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
         x="n",
         y="ise_score",
         hue="Method",
-        style="type",
+        style="Method",
         col="dist_name",
         col_wrap=col_wrap_val,
         col_order=nice_dist_order,
@@ -390,10 +331,10 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
         facet_kws={"sharey": False, "despine": True},
         legend="full",
         lw=2.0,
-        markers=True,
-        palette=COLOR_MAP,
-        style_order=list(STYLE_MAP_TUPLES.keys()),
-        dashes=STYLE_MAP_TUPLES,
+        palette=get_color_map(),
+        style_order=get_method_order(),
+        dashes=get_seaborn_dashes(),
+        markers=get_seaborn_markers(),
     )
 
     g.set(
@@ -435,7 +376,7 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
     print(f"Generating Computation Time plot: {output_file}...")
 
     df_agg = (
-        df_long.groupby(["dist_name", "n", "Method", "type"])
+        df_long.groupby(["dist_name", "n", "Method"])
         .mean(numeric_only=True)
         .reset_index()
     )
@@ -446,7 +387,7 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
         x="n",
         y="comp_time",
         hue="Method",
-        style="type",
+        style="Method",
         col="dist_name",
         col_wrap=3,
         col_order=dist_order,
@@ -455,10 +396,10 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
         facet_kws={"sharey": False, "despine": True},
         legend="full",
         lw=2.0,
-        markers=True,
-        palette=COLOR_MAP,
-        style_order=list(STYLE_MAP_TUPLES.keys()),
-        dashes=STYLE_MAP_TUPLES,
+        palette=get_color_map(),
+        style_order=get_method_order(),
+        dashes=get_seaborn_dashes(),
+        markers=get_seaborn_markers(),
     )
 
     g.set(
@@ -509,7 +450,7 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
     nice_dist_order = [d for d in dist_order if d in df_filtered["dist_name"].unique()]
 
     df_agg = (
-        df_filtered.groupby(["dist_name", "n", "Method", "type"])
+        df_filtered.groupby(["dist_name", "n", "Method"])
         .mean(numeric_only=True)
         .reset_index()
     )
@@ -526,7 +467,7 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
         x="n",
         y="h",
         hue="Method",
-        style="type",
+        style="Method",
         col="dist_name",
         col_wrap=col_wrap_val,
         col_order=nice_dist_order,
@@ -535,10 +476,10 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
         facet_kws={"sharey": False, "despine": True},
         legend="full",
         lw=2.0,
-        markers=True,
-        palette=COLOR_MAP,
-        style_order=list(STYLE_MAP_TUPLES.keys()),
-        dashes=STYLE_MAP_TUPLES,
+        palette=get_color_map(),
+        style_order=get_method_order(),
+        dashes=get_seaborn_dashes(),
+        markers=get_seaborn_markers(),
     )
 
     g.set(
@@ -594,7 +535,7 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
     nice_dist_order = [d for d in dist_order if d in df_filtered["dist_name"].unique()]
 
     df_agg = (
-        df_filtered.groupby(["dist_name", "n", "Method", "type"])
+        df_filtered.groupby(["dist_name", "n", "Method"])
         .mean(numeric_only=True)
         .reset_index()
     )
@@ -611,7 +552,7 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
         x="n",
         y="integral_error",
         hue="Method",
-        style="type",
+        style="Method",
         col="dist_name",
         col_wrap=col_wrap_val,
         col_order=nice_dist_order,
@@ -620,10 +561,10 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
         facet_kws={"sharey": False, "despine": True},
         legend="full",
         lw=2.0,
-        markers=True,
-        palette=COLOR_MAP,
-        style_order=list(STYLE_MAP_TUPLES.keys()),
-        dashes=STYLE_MAP_TUPLES,
+        palette=get_color_map(),
+        style_order=get_method_order(),
+        dashes=get_seaborn_dashes(),
+        markers=get_seaborn_markers(),
     )
 
     g.set(
@@ -679,7 +620,7 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
     nice_dist_order = [d for d in dist_order if d in df_filtered["dist_name"].unique()]
 
     df_agg = (
-        df_filtered.groupby(["dist_name", "n", "Method", "type"])
+        df_filtered.groupby(["dist_name", "n", "Method"])
         .mean(numeric_only=True)
         .reset_index()
     )
@@ -696,7 +637,7 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
         x="h",
         y="integral_error",
         hue="Method",
-        style="type",
+        style="Method",
         col="dist_name",
         col_wrap=col_wrap_val,
         col_order=nice_dist_order,
@@ -705,10 +646,10 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
         facet_kws={"sharey": False, "despine": True},
         legend="full",
         lw=2.0,
-        markers=True,
-        palette=COLOR_MAP,
-        style_order=list(STYLE_MAP_TUPLES.keys()),
-        dashes=STYLE_MAP_TUPLES,
+        palette=get_color_map(),
+        style_order=get_method_order(),
+        dashes=get_seaborn_dashes(),
+        markers=get_seaborn_markers(),
     )
 
     g.set(

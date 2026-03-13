@@ -10,11 +10,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-plt.rcParams["svg.fonttype"] = "none"
+from _plot_styles import setup_theme, KERNEL_SHAPE_COLORS, KERNEL_SHAPE_STYLES
 
-from tol_colors import tol_cmap, tol_cset
+setup_theme()
 
-cmap = tol_cset("bright")
 from scipy.stats import beta
 
 
@@ -78,7 +77,13 @@ def plot_chen_f2_kernels():
         if a > 0 and b_param > 0:
             y = beta.pdf(t, a, b_param)
             label = f"$x={x_eval}$ ($\\alpha={a:.2f}, \\beta={b_param:.2f}$)"
-            ax.plot(t, y, lw=2, label=label, color=cmap[i])
+            ax.plot(
+                t, y, lw=2, label=label,
+                color=KERNEL_SHAPE_COLORS[i],
+                linestyle=KERNEL_SHAPE_STYLES[i]["linestyle"],
+                marker=KERNEL_SHAPE_STYLES[i]["marker"],
+                markevery=100, markersize=5,
+            )
         else:
             print(f"Invalid parameters for x={x_eval}: a={a}, b={b_param}")
 
