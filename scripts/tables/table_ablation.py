@@ -63,10 +63,15 @@ def main():
         dist_data = df_clean[df_clean["distribution"] == dist]
         d_scores = dist_data["MODEL_D_lscv"]
         
-        # 1. Format Medians
+        # 1. Format Medians (bold the lowest per distribution)
+        medians = {m: dist_data[f"{m}_lscv"].median() for m in MODELS}
+        best_med = min(medians.values())
         for m in MODELS:
-            med = dist_data[f"{m}_lscv"].median()
-            metrics_dict[f"{MODEL_NAMES[m]} Med. LSCV"].append(f"{med:.4f}")
+            med = medians[m]
+            formatted = f"{med:.4f}"
+            if abs(med - best_med) < 1e-9:
+                formatted = f"\\textbf{{{formatted}}}"
+            metrics_dict[f"{MODEL_NAMES[m]} Med. LSCV"].append(formatted)
             
         # 2. Format Statistical Tests
         for m in ["MODEL_A", "MODEL_B", "MODEL_C"]:
