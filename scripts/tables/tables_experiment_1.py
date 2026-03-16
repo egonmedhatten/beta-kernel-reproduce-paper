@@ -26,6 +26,20 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 print(f"--- Running with pandas version: {pd.__version__} ---")
 
+
+def significance_stars(p):
+    """Return asterisk string for significance level."""
+    if p is None or (isinstance(p, float) and np.isnan(p)):
+        return ""
+    if p < 0.001:
+        return "$^{***}$"
+    elif p < 0.01:
+        return "$^{**}$"
+    elif p < 0.05:
+        return "$^{*}$"
+    return ""
+
+
 # --- LaTeX Macro Definitions ---
 LATEX_MACRO_MAP = {
     "BETA_ROT": r"\rott",
@@ -85,7 +99,7 @@ def format_dist_names_for_index(index_df):
 
 def get_stats_for_metric(df_raw, methods, ref_method, metric_name, metric_col):
     """
-    Calculates the mean and p-value for a *single* metric
+    Calculates the mean, median, and p-value for a *single* metric
     across all methods.
     """
     stats_data = {}
@@ -94,10 +108,12 @@ def get_stats_for_metric(df_raw, methods, ref_method, metric_name, metric_col):
         col_full_name = f"{method}_{metric_col}"
 
         mean_val = np.nan
+        median_val = np.nan
         if col_full_name in df_raw.columns:
             mean_val = df_raw[col_full_name].mean()
+            median_val = df_raw[col_full_name].median()
 
-        p_val_str = "Reference"  # Default for the ref_method
+        p_val_raw = np.nan  # Raw numeric p-value
 
         if method != ref_method:
             ref_col_name = f"{ref_method}_{metric_col}"
@@ -105,29 +121,25 @@ def get_stats_for_metric(df_raw, methods, ref_method, metric_name, metric_col):
                 ref_col_name not in df_raw.columns
                 or col_full_name not in df_raw.columns
             ):
-                p_val_str = "N/A"
+                pass
             else:
                 ref_series = df_raw[ref_col_name]
                 method_series = df_raw[col_full_name]
                 paired_df = pd.concat([ref_series, method_series], axis=1).dropna()
 
-                if paired_df.empty:
-                    p_val_str = "N/A"
-                else:
+                if not paired_df.empty:
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore", category=RuntimeWarning)
-                        t_stat, p_val = stats.wilcoxon(
+                        _, p_val = stats.wilcoxon(
                             paired_df.iloc[:, 0], paired_df.iloc[:, 1]
                         )
+                    p_val_raw = p_val
 
-                    if np.isnan(p_val):
-                        p_val_str = "N/A"
-                    elif p_val < 0.001:
-                        p_val_str = "$<$ 0.001"
-                    else:
-                        p_val_str = f"{p_val:.3f}"
-
-        stats_data[method] = {"mean": mean_val, "p_value": p_val_str}
+        stats_data[method] = {
+            "mean": mean_val,
+            "median": median_val,
+            "p_val_raw": p_val_raw,
+        }
 
     return stats_data
 
@@ -141,6 +153,7 @@ def create_metric_table(
     metric_col: str,
     latex_file: str,
     include_hard_dist: bool = True,
+    caption: str = "",
 ):
     """
     Generates a single, pivoted table for one metric (e.g., LSCV).
@@ -184,7 +197,8 @@ def create_metric_table(
     for group in group_names:
         for method in methods:
             mean = all_stats[group][method]["mean"]
-            p_val = all_stats[group][method]["p_value"]
+            median = all_stats[group][method]["median"]
+            p_raw = all_stats[group][method]["p_val_raw"]
 
             if pd.isna(mean):
                 df_formatted.loc[method, group] = "-"
@@ -195,11 +209,9 @@ def create_metric_table(
             if method == bests.get(group):
                 mean_str = f"\\textbf{{{mean_str}}}"
 
-            # Add p-value (if not reference)
-            if method == ref_method:
-                df_formatted.loc[method, group] = mean_str
-            else:
-                df_formatted.loc[method, group] = f"{mean_str} ({p_val})"
+            median_str = f"{median:.4f}"
+            stars = significance_stars(p_raw) if method != ref_method else ""
+            df_formatted.loc[method, group] = f"{mean_str} ({median_str}){stars}"
 
     # --- 3. Create Markdown Version ---
     df_md = df_formatted.copy()
@@ -225,55 +237,64 @@ def create_metric_table(
 
     try:
         with open(latex_file, "w") as f:
+            if caption:
+                f.write(f"% Suggested caption: {caption}\n")
             f.write(latex_string)
         print(f"\nSuccessfully saved LaTeX table to: {latex_file}")
     except Exception as e:
         print(f"\nError saving LaTeX file: {e}")
 
 
-# --- Appendix Tables Function (Unchanged, but call is modified) ---
+# --- Appendix Tables Function ---
 def print_appendix_tables(df_raw, method_order, latex_path=None):
     if df_raw is None:
         return
-    df_summary = df_raw.groupby(["distribution", "n"]).mean(numeric_only=True)
+    df_mean = df_raw.groupby(["distribution", "n"]).mean(numeric_only=True)
+    df_median = df_raw.groupby(["distribution", "n"]).median(numeric_only=True)
 
-    def create_table(metric_cols, metric_name, file_suffix, float_format):
-        df_metric = df_summary[metric_cols].copy()
-        df_metric_latex = df_metric.rename(
+    def create_table(metric_cols, metric_name, file_suffix, float_format, caption=""):
+        # Build a combined mean (median) string DataFrame
+        df_combined = df_mean[metric_cols].copy()
+        for col in metric_cols:
+            mean_series = df_mean[col]
+            median_series = df_median[col]
+            df_combined[col] = [
+                f"{m:.4f} ({md:.4f})" if pd.notna(m) else "N/A"
+                for m, md in zip(mean_series, median_series)
+            ]
+
+        df_combined_latex = df_combined.rename(
             columns={
                 f"{m}_{metric_name}": LATEX_MACRO_MAP.get(m, m) for m in method_order
             }
         )
 
-        df_metric.columns = [m.replace(f"_{metric_name}", "") for m in metric_cols]
-        df_metric = format_dist_names_for_index(df_metric)
+        df_combined.columns = [m.replace(f"_{metric_name}", "") for m in metric_cols]
+        df_combined = format_dist_names_for_index(df_combined)
 
         print("\n\n" + "=" * 80)
-        print(f"--- APPENDIX TABLE: Average {metric_name.upper()} Scores ---")
+        print(f"--- APPENDIX TABLE: Mean (Median) {metric_name.upper()} Scores ---")
         print("=" * 80)
 
-        df_md = df_metric.fillna("N/A")
-        print(df_md.to_markdown(floatfmt=float_format))
+        print(df_combined.to_string())
 
         if latex_path:
             filename = os.path.join(latex_path, f"appendix_{file_suffix}.tex")
             try:
-                latex_float_format = f"%.{float_format.split('.')[-1]}"
-                df_latex = df_metric_latex.copy()
+                df_latex = df_combined_latex.copy()
                 df_latex.columns = [
                     m.replace(f"_{metric_name}", "") for m in df_latex.columns
                 ]
                 df_latex = format_dist_names_for_index(df_latex)
-                df_latex = df_latex.fillna("N/A")
 
                 latex_string = df_latex.to_latex(
-                    na_rep="N/A",
-                    float_format=latex_float_format,
                     escape=False,
                     multirow=True,
                 )
 
                 with open(filename, "w") as f:
+                    if caption:
+                        f.write(f"% Suggested caption: {caption}\n")
                     f.write(latex_string)
                 print(f"Successfully saved LaTeX table to: {filename}")
             except Exception as e:
@@ -282,25 +303,28 @@ def print_appendix_tables(df_raw, method_order, latex_path=None):
     lscv_cols = [
         f"{m}_lscv_score"
         for m in method_order
-        if f"{m}_lscv_score" in df_summary.columns
+        if f"{m}_lscv_score" in df_mean.columns
     ]
     if lscv_cols:
-        create_table(lscv_cols, "lscv_score", "a_lscv", ".4f")
+        create_table(lscv_cols, "lscv_score", "a_lscv", ".4f",
+                     caption="Mean LSCV scores (median in parentheses) per distribution and sample size.")
 
     ise_cols = [
-        f"{m}_ise_score" for m in method_order if f"{m}_ise_score" in df_summary.columns
+        f"{m}_ise_score" for m in method_order if f"{m}_ise_score" in df_mean.columns
     ]
     if ise_cols:
-        create_table(ise_cols, "ise_score", "b_ise", ".4f")
+        create_table(ise_cols, "ise_score", "b_ise", ".4f",
+                     caption="Mean ISE scores (median in parentheses) per distribution and sample size.")
 
     time_cols = [
-        f"{m}_comp_time" for m in method_order if f"{m}_comp_time" in df_summary.columns
+        f"{m}_comp_time" for m in method_order if f"{m}_comp_time" in df_mean.columns
     ]
     if time_cols:
-        create_table(time_cols, "comp_time", "c_time", ".4f")
+        create_table(time_cols, "comp_time", "c_time", ".4f",
+                     caption="Mean computation times in seconds (median in parentheses) per distribution and sample size.")
 
-    if "BETA_ROT_is_fallback" in df_summary.columns:
-        df_fallback = df_summary[["BETA_ROT_is_fallback"]].copy()
+    if "BETA_ROT_is_fallback" in df_mean.columns:
+        df_fallback = df_mean[["BETA_ROT_is_fallback"]].copy()
         df_fallback = format_dist_names_for_index(df_fallback)
 
         print("\n\n" + "=" * 80)
@@ -323,6 +347,7 @@ def print_appendix_tables(df_raw, method_order, latex_path=None):
                     escape=False, multirow=True, na_rep="-"
                 )
                 with open(filename, "w") as f:
+                    f.write("% Suggested caption: Mean fallback rate for the proposed rule-of-thumb method per distribution and sample size.\n")
                     f.write(latex_string)
                 print(f"Successfully saved LaTeX table to: {filename}")
             except Exception as e:
@@ -379,6 +404,7 @@ if __name__ == "__main__":
             "lscv_score",
             os.path.join(latex_output_path, "main_table_lscv.tex"),
             include_hard_dist=True,
+            caption="Mean LSCV scores (median in parentheses) across distribution groups. Bold indicates the best mean per group. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
         )
 
         create_metric_table(
@@ -389,6 +415,7 @@ if __name__ == "__main__":
             "ise_score",
             os.path.join(latex_output_path, "main_table_ise.tex"),
             include_hard_dist=False,  # ISE is not valid for 'hard'
+            caption="Mean ISE scores (median in parentheses) across distribution groups. Bold indicates the best mean per group. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
         )
 
         create_metric_table(
@@ -399,6 +426,7 @@ if __name__ == "__main__":
             "comp_time",
             os.path.join(latex_output_path, "main_table_time.tex"),
             include_hard_dist=True,
+            caption="Mean computation times in seconds (median in parentheses) across distribution groups. Bold indicates the fastest mean per group. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
         )
 
         # --- Appendix tables are still generated as before ---

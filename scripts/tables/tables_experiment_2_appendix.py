@@ -7,7 +7,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from _paths import DATA_DIR, TABLES_DIR
 
 import pandas as pd
+import numpy as np
 import os
+
+
+def significance_stars(p):
+    """Return asterisk string for significance level."""
+    if p is None or (isinstance(p, float) and np.isnan(p)):
+        return ""
+    if p < 0.001:
+        return "$^{***}$"
+    elif p < 0.01:
+        return "$^{**}$"
+    elif p < 0.05:
+        return "$^{*}$"
+    return ""
 
 
 def format_p_value(p):
@@ -20,7 +34,7 @@ def format_p_value(p):
         return f"{p:.3f}"
 
 
-def format_value(v, best_v, is_min_best=True):
+def format_value(v, best_v, is_min_best=True, decimals=4):
     """Format metric value, bolding the best."""
     if pd.isna(v):
         return "-"
@@ -34,7 +48,7 @@ def format_value(v, best_v, is_min_best=True):
         if v >= best_v - 1e-9:
             is_best = True
 
-    str_v = f"{v:.4f}"
+    str_v = f"{v:.{decimals}f}"
     if is_best:
         return f"\\textbf{{{str_v}}}"
     return str_v
@@ -73,19 +87,23 @@ def generate_appendix_tables(csv_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     # ---------------------------------------------------------
-    # Table D.1: Wilcoxon P-values for LSCV
+    # Table D.1: LSCV Significance (vs BETA_ROT)
     # ---------------------------------------------------------
     d1_path = os.path.join(output_dir, "table_d1_lscv_pvalues.tex")
     with open(d1_path, "w") as f:
+        f.write("% Suggested caption: LSCV scores for real-world datasets. Bold indicates the best score per dataset. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n")
         f.write(r"\begin{tabular}{llc}" + "\n")
         f.write(r"\hline" + "\n")
         f.write(
-            r"\textbf{Dataset} & \textbf{Method} & \textbf{p-value (vs \rott)} \\ \hline"
+            r"\textbf{Dataset} & \textbf{Method} & \textbf{LSCV Score} \\ \hline"
             + "\n"
         )
 
         for dataset in datasets:
             subset = df[df["dataset"] == dataset].copy()
+
+            # Find best LSCV score (min) for bolding
+            best_lscv = subset["lscv_score"].min()
 
             # Sort by method order
             subset["method"] = pd.Categorical(
@@ -99,12 +117,19 @@ def generate_appendix_tables(csv_path, output_dir):
             for _, row in subset.iterrows():
                 method_macro = get_method_macro(row["method"])
 
-                # P-value for LSCV (Density)
-                # The column 'density_p_value_wilcoxon (BETA_ROT >)' tests if BETA_ROT is significantly better
-                p_val = row["density_p_value_wilcoxon (BETA_ROT >)"]
-                p_str = format_p_value(p_val)
+                # LSCV score with bolding
+                lscv_val = row["lscv_score"]
+                if pd.isna(lscv_val):
+                    lscv_str = "-"
+                else:
+                    lscv_str = format_value(lscv_val, best_lscv, is_min_best=True)
+                    # Add significance asterisks for non-reference methods
+                    if row["method"] != "BETA_ROT":
+                        p_col = "density_p_value_wilcoxon (BETA_ROT >)"
+                        if p_col in row.index and pd.notna(row[p_col]):
+                            lscv_str += significance_stars(row[p_col])
 
-                f.write(f" & {method_macro} & {p_str} \\\\\n")
+                f.write(f" & {method_macro} & {lscv_str} \\\\\n")
 
             f.write(r"\hline" + "\n")
 
@@ -112,22 +137,29 @@ def generate_appendix_tables(csv_path, output_dir):
     print(f"Generated {d1_path}")
 
     # ---------------------------------------------------------
-    # Table D.2: Log-Likelihood Results
+    # Table D.2: Log-Likelihood Results with mean (median) from per-fold data
     # ---------------------------------------------------------
+    per_fold_path = str(DATA_DIR / "experiment2" / "per_fold" / "experiment_2_per_fold_results.csv")
+    try:
+        df_folds = pd.read_csv(per_fold_path)
+        df_folds = df_folds[df_folds["method"].isin(target_methods)]
+        has_per_fold = True
+    except FileNotFoundError:
+        print(f"Warning: Per-fold data not found at {per_fold_path}, using summary values.")
+        has_per_fold = False
+
     d2_path = os.path.join(output_dir, "table_d2_loglikelihood.tex")
     with open(d2_path, "w") as f:
-        f.write(r"\begin{tabular}{llcc}" + "\n")
+        f.write("% Suggested caption: Mean log-likelihood (median in parentheses) from cross-validated held-out folds. Higher is better. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n")
+        f.write(r"\begin{tabular}{llc}" + "\n")
         f.write(r"\hline" + "\n")
         f.write(
-            r"\textbf{Dataset} & \textbf{Method} & \textbf{Log-Likelihood} & \textbf{p-value (vs \rott)} \\ \hline"
+            r"\textbf{Dataset} & \textbf{Method} & \textbf{Log-Likelihood} \\ \hline"
             + "\n"
         )
 
         for dataset in datasets:
             subset = df[df["dataset"] == dataset].copy()
-
-            # Best Log-Likelihood (Max is best)
-            best_ll = subset["log_likelihood"].max()
 
             # Sort
             subset["method"] = pd.Categorical(
@@ -135,21 +167,43 @@ def generate_appendix_tables(csv_path, output_dir):
             )
             subset = subset.sort_values("method")
 
+            # Compute mean and median from per-fold data if available
+            if has_per_fold:
+                fold_subset = df_folds[df_folds["dataset"] == dataset]
+                fold_stats = fold_subset.groupby("method")["log_likelihood"].agg(["mean", "median"])
+            else:
+                fold_stats = None
+
+            # Best Log-Likelihood (Max is best) - use mean from fold data if available
+            if fold_stats is not None and not fold_stats.empty:
+                best_ll = fold_stats["mean"].max()
+            else:
+                best_ll = subset["log_likelihood"].max()
+
             # Multirow
             f.write(f"\\multirow{{6}}{{*}}{{\\textit{{{dataset}}}}} \n")
 
             for _, row in subset.iterrows():
                 method_macro = get_method_macro(row["method"])
+                method_name = row["method"]
 
-                # Log Likelihood
-                ll_val = row["log_likelihood"]
-                ll_str = format_value(ll_val, best_ll, is_min_best=False)
+                # Log Likelihood - mean (median) from per-fold data
+                if fold_stats is not None and method_name in fold_stats.index:
+                    ll_mean = fold_stats.loc[method_name, "mean"]
+                    ll_median = fold_stats.loc[method_name, "median"]
+                    mean_str = format_value(ll_mean, best_ll, is_min_best=False, decimals=2)
+                    ll_str = f"{mean_str} ({ll_median:.2f})"
+                else:
+                    ll_val = row["log_likelihood"]
+                    ll_str = format_value(ll_val, best_ll, is_min_best=False, decimals=2)
 
-                # P-value
-                p_val = row["loglik_p_value_wilcoxon (BETA_ROT >)"]
-                p_str = format_p_value(p_val)
+                # Significance asterisks for non-reference methods
+                if method_name != "BETA_ROT":
+                    p_col = "loglik_p_value_wilcoxon (BETA_ROT >)"
+                    if p_col in row.index and pd.notna(row[p_col]):
+                        ll_str += significance_stars(row[p_col])
 
-                f.write(f" & {method_macro} & {ll_str} & {p_str} \\\\\n")
+                f.write(f" & {method_macro} & {ll_str} \\\\\n")
 
             f.write(r"\hline" + "\n")
 

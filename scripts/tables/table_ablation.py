@@ -2,8 +2,8 @@
 """
 Generates the Transposed Aggregated Ablation Table (LaTeX-Safe).
 
-This script computes the overall median LSCV scores and Wilcoxon signed-rank 
-p-values, outputting a perfectly formatted, highly readable transposed table 
+This script computes the overall mean and median LSCV scores, win rates,
+and significance asterisks, outputting a formatted transposed table
 (metrics as rows, distributions as columns) for the paper.
 """
 
@@ -28,6 +28,19 @@ MODEL_NAMES = {
     "MODEL_D": "Proposed",
 }
 
+
+def significance_stars(p):
+    """Return asterisk string for significance level."""
+    if p is None or (isinstance(p, float) and np.isnan(p)):
+        return ""
+    if p < 0.001:
+        return "$^{***}$"
+    elif p < 0.01:
+        return "$^{**}$"
+    elif p < 0.05:
+        return "$^{*}$"
+    return ""
+
 def main():
     print("\n===========================================================")
     print("--- Running Transposed Ablation Table Script ---")
@@ -47,55 +60,47 @@ def main():
     # We build a dictionary where keys are Metric names,
     # and values are lists of results corresponding to each distribution column.
     metrics_dict = {
-        "Var Only Med. LSCV": [],
-        "Var+Skew Med. LSCV": [],
-        "Var+Kurt Med. LSCV": [],
-        "Proposed Med. LSCV": [],
-        "Win Rate (vs Var Only)": [],
-        "p-value (vs Var Only)": [],
-        "Win Rate (vs Var+Skew)": [],
-        "p-value (vs Var+Skew)": [],
-        "Win Rate (vs Var+Kurt)": [],
-        "p-value (vs Var+Kurt)": [],
+        f"{MODEL_NAMES[m]} LSCV": [] for m in MODELS
     }
+    metrics_dict.update({
+        f"Win Rate (vs {MODEL_NAMES[m]})": [] for m in ["MODEL_A", "MODEL_B", "MODEL_C"]
+    })
 
     for dist in distributions:
         dist_data = df_clean[df_clean["distribution"] == dist]
         d_scores = dist_data["MODEL_D_lscv"]
         
-        # 1. Format Medians (bold the lowest per distribution)
+        # 1. Compute means and medians
+        means = {m: dist_data[f"{m}_lscv"].mean() for m in MODELS}
         medians = {m: dist_data[f"{m}_lscv"].median() for m in MODELS}
-        best_med = min(medians.values())
-        for m in MODELS:
-            med = medians[m]
-            formatted = f"{med:.4f}"
-            if abs(med - best_med) < 1e-9:
-                formatted = f"\\textbf{{{formatted}}}"
-            metrics_dict[f"{MODEL_NAMES[m]} Med. LSCV"].append(formatted)
-            
-        # 2. Format Statistical Tests
+        best_mean = min(means.values())
+        
+        # 2. Compute p-values for non-reference models vs MODEL_D
+        pvals = {}
         for m in ["MODEL_A", "MODEL_B", "MODEL_C"]:
             m_scores = dist_data[f"{m}_lscv"]
-            
-            # Win Rate (escaped for LaTeX)
-            win_rate = (d_scores < m_scores).mean()
-            metrics_dict[f"Win Rate (vs {MODEL_NAMES[m]})"].append(f"{win_rate * 100:.1f}\\%")
-            
-            # Wilcoxon test
             diffs = d_scores - m_scores
             if np.all(diffs == 0):
-                pval = 1.0
+                pvals[m] = 1.0
             else:
-                _, pval = wilcoxon(m_scores, d_scores)
-                
-            # Formatted p-values with math-mode less-than signs
-            # Clean p-values without redundant significance stars
-            if pval < 0.001:
-                pval_str = "$<$0.001"
-            else:
-                pval_str = f"{pval:.3f}"
-                
-            metrics_dict[f"p-value (vs {MODEL_NAMES[m]})"].append(pval_str)
+                _, pvals[m] = wilcoxon(m_scores, d_scores)
+        
+        # 3. Format LSCV rows as mean (median) with bolding and asterisks
+        for m in MODELS:
+            mean_str = f"{means[m]:.4f}"
+            if abs(means[m] - best_mean) < 1e-9:
+                mean_str = f"\\textbf{{{mean_str}}}"
+            median_str = f"{medians[m]:.4f}"
+            stars = significance_stars(pvals[m]) if m != "MODEL_D" else ""
+            metrics_dict[f"{MODEL_NAMES[m]} LSCV"].append(
+                f"{mean_str} ({median_str}){stars}"
+            )
+            
+        # 4. Format Win Rates
+        for m in ["MODEL_A", "MODEL_B", "MODEL_C"]:
+            m_scores = dist_data[f"{m}_lscv"]
+            win_rate = (d_scores < m_scores).mean()
+            metrics_dict[f"Win Rate (vs {MODEL_NAMES[m]})"].append(f"{win_rate * 100:.1f}\\%")
 
     # Convert to DataFrame (Rows = Metrics, Columns = Distributions)
     df_out = pd.DataFrame(metrics_dict, index=distributions).T
@@ -111,7 +116,7 @@ def main():
     print("\n--- LaTeX Table Output (For Supplementary Material) ---")
     # Generate the LaTeX string using pandas 3.0+ Styler
     latex_table = df_out.style.to_latex(
-        caption="Ablation study of fallback heuristic components across 6,000 trials per distribution. Displaying median LSCV scores (lower is better), win rates, and Wilcoxon signed-rank test p-values comparing the proposed rule against simpler parameterizations.",
+        caption="Ablation study of fallback heuristic components across 6,000 trials per distribution. Displaying mean LSCV scores with median in parentheses (lower is better), win rates, and significance of Wilcoxon signed-rank tests comparing the proposed rule against simpler parameterizations. Significance levels: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
         label="tab:ablation_study_aggregated",
         hrules=True
     )
@@ -119,7 +124,7 @@ def main():
     # Inject standard LaTeX table formatting
     latex_table = latex_table.replace("\\begin{table}\n", "\\begin{table}[ht]\n\\centering\n")
     
-    # Inject a midrule to visually separate the LSCV scores from the Statistical tests
+    # Inject a midrule to visually separate the LSCV scores from the Win Rate rows
     latex_table = latex_table.replace("\nWin Rate (vs Var Only)", "\n\\midrule\nWin Rate (vs Var Only)")
     
     print(latex_table)
@@ -127,7 +132,7 @@ def main():
     # By removing caption and label, Pandas only generates the \begin{tabular} block
     latex_tabular = df_out.style.to_latex(hrules=True)
     
-    # Inject a midrule to visually separate the LSCV scores from the Statistical tests
+    # Inject a midrule to visually separate the LSCV scores from the Win Rate rows
     latex_tabular = latex_tabular.replace(
         "\nWin Rate (vs Var Only)", 
         "\n\\midrule\nWin Rate (vs Var Only)"
@@ -135,6 +140,7 @@ def main():
 
     try:
         with open(TABLES_DIR / "ablation_table.tex", "w") as f:
+            f.write("% Suggested caption: Ablation study of fallback heuristic components across 6,000 trials per distribution. Mean LSCV scores (median in parentheses); lower is better. Win rates of the proposed rule. Significance of Wilcoxon signed-rank tests: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n")
             f.write(latex_tabular)
         print(f"\nSuccessfully saved LaTeX table to: {TABLES_DIR / 'ablation_table.tex'}")
     except Exception as e:
