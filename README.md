@@ -1,6 +1,6 @@
 # Supplementary Code: A Fast, Closed-Form Bandwidth Selector for the Beta Kernel Density Estimator
 
-This repository contains the code and data to reproduce all experiments, tables,
+This repository contains the python code and data to reproduce all experiments, tables,
 and figures in the paper *"A Fast, Closed-Form Bandwidth Selector for the Beta
 Kernel Density Estimator"*, submitted to the *Journal of Computational and
 Graphical Statistics*.
@@ -105,6 +105,8 @@ figures can be reproduced without re-running the experiments:
 | `data/ablation_study/ablation_results.csv` | Ablation study results |
 
 ## Reproducing Tables and Figures
+
+> **Note:** All plotting scripts are configured to use distinct line styles (dashed, dotted) and markers to ensure the generated figures are fully interpretable when printed in black and white, per JCGS guidelines.
 
 ### All at once
 

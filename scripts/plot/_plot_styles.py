@@ -16,8 +16,8 @@ import seaborn as sns
 # ---------------------------------------------------------------------------
 # Global configuration flags
 # ---------------------------------------------------------------------------
-SHOW_SUPTITLE = True          # Set False to omit figure suptitles (use LaTeX captions)
-FIGURE_WIDTH_FULL = 6.5       # Single-column paper full width (inches)
+SHOW_SUPTITLE = True  # Set False to omit figure suptitles (use LaTeX captions)
+FIGURE_WIDTH_FULL = 6.5  # Single-column paper full width (inches)
 
 # ---------------------------------------------------------------------------
 # Okabe-Ito & High-Contrast Colorblind-Safe Palette
@@ -25,17 +25,17 @@ FIGURE_WIDTH_FULL = 6.5       # Single-column paper full width (inches)
 # ---------------------------------------------------------------------------
 COLORS = {
     # Okabe-Ito Base
-    "black":     "#000000",
-    "orange":    "#E69F00",
-    "skyblue":   "#56B4E9",
-    "green":     "#009E73",
-    "blue":      "#0072B2",
+    "black": "#000000",
+    "orange": "#E69F00",
+    "skyblue": "#56B4E9",
+    "green": "#009E73",
+    "blue": "#0072B2",
     "vermilion": "#D55E00",  # Dark, vibrant red/orange
-    "purple":    "#CC79A7",
-    "grey":      "#666666",  # Darkened from #999999 for B&W print contrast
+    "purple": "#CC79A7",
+    "grey": "#666666",  # Darkened from #999999 for B&W print contrast
     # Supplementary high-contrast Paul Tol
-    "indigo":    "#332288",
-    "teal":      "#44AA99",
+    "indigo": "#332288",
+    "teal": "#44AA99",
 }
 
 # ---------------------------------------------------------------------------
@@ -44,6 +44,7 @@ COLORS = {
 
 # Minimum font size (pt) — enforced for all text elements
 _MIN_FONT_PT = 10
+
 
 def setup_theme():
     """Configure matplotlib + seaborn for publication-quality figures.
@@ -70,24 +71,30 @@ def setup_theme():
     )
 
     # 2. Override rcParams AFTER seaborn to guarantee >= 10pt everywhere
-    plt.rcParams.update({
-        "font.family": "sans-serif",
-        "font.sans-serif": [
-            "Arial", "DejaVu Sans", "Liberation Sans", "Bitstream Vera Sans",
-        ],
-        "font.size": 11,
-        "axes.titlesize": 11,
-        "axes.labelsize": 11,
-        "legend.fontsize": 10,
-        "legend.title_fontsize": 10,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "svg.fonttype": "none",
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
-        "lines.linewidth": 1.5,
-        "lines.markersize": 6,
-    })
+    plt.rcParams.update(
+        {
+            "font.family": "sans-serif",
+            "font.sans-serif": [
+                "Arial",
+                "DejaVu Sans",
+                "Liberation Sans",
+                "Bitstream Vera Sans",
+            ],
+            "font.size": 11,
+            "axes.titlesize": 11,
+            "axes.labelsize": 11,
+            "legend.fontsize": 10,
+            "legend.title_fontsize": 10,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "svg.fonttype": "none",
+            "figure.dpi": 300,
+            "savefig.dpi": 300,
+            "lines.linewidth": 1.5,
+            "lines.markersize": 6,
+        }
+    )
+
 
 # ---------------------------------------------------------------------------
 # Experiment 1 & 2 — per-method styles (10 methods)
@@ -106,27 +113,75 @@ def setup_theme():
 
 METHOD_STYLES = {
     # --- PROPOSED (High visibility Vermilion, Solid, Circle) ---
-    "Beta (Ref)":          {"color": COLORS["vermilion"], "linestyle": "-",  "marker": "o", "dashes": ""},
-    
+    "Beta (Ref)": {
+        "color": COLORS["vermilion"],
+        "linestyle": "-",
+        "marker": "o",
+        "dashes": "",
+    },
     # --- BETA FAMILY (Warm/Red Hues) ---
-    "Beta (LSCV)":         {"color": COLORS["orange"],    "linestyle": ":",  "marker": "D", "dashes": (1, 1.5)},
-    "Beta (Oracle)":       {"color": COLORS["purple"],    "linestyle": "-.", "marker": "*", "dashes": (4, 1.5, 1, 1.5)},
-    "Beta (ISE)":          {"color": COLORS["black"],     "linestyle": "-.", "marker": "X", "dashes": (4, 1.5, 1, 1.5)},
-
+    "Beta (LSCV)": {
+        "color": COLORS["orange"],
+        "linestyle": ":",
+        "marker": "D",
+        "dashes": (1, 1.5),
+    },
+    "Beta (Oracle)": {
+        "color": COLORS["purple"],
+        "linestyle": "-.",
+        "marker": "*",
+        "dashes": (4, 1.5, 1, 1.5),
+    },
+    "Beta (ISE)": {
+        "color": COLORS["black"],
+        "linestyle": "-.",
+        "marker": "X",
+        "dashes": (4, 1.5, 1, 1.5),
+    },
     # --- LOGIT FAMILY (Blue Hues) ---
-    "Logit (Silverman)":   {"color": COLORS["blue"],      "linestyle": "--", "marker": "s", "dashes": (4, 1.5)},
-    "Logit (LSCV)":        {"color": COLORS["skyblue"],   "linestyle": ":",  "marker": "v", "dashes": (1, 1.5)},
-    "Logit (ISE-min)":     {"color": COLORS["indigo"],    "linestyle": "-.", "marker": "p", "dashes": (4, 1.5, 1, 1.5)},
-
+    "Logit (Silverman)": {
+        "color": COLORS["blue"],
+        "linestyle": "--",
+        "marker": "s",
+        "dashes": (4, 1.5),
+    },
+    "Logit (LSCV)": {
+        "color": COLORS["skyblue"],
+        "linestyle": ":",
+        "marker": "v",
+        "dashes": (1, 1.5),
+    },
+    "Logit (ISE-min)": {
+        "color": COLORS["indigo"],
+        "linestyle": "-.",
+        "marker": "p",
+        "dashes": (4, 1.5, 1, 1.5),
+    },
     # --- REFLECT FAMILY (Green/Grey Hues) ---
-    "Reflect (Silverman)": {"color": COLORS["green"],     "linestyle": "--", "marker": "^", "dashes": (4, 1.5)},
-    "Reflect (LSCV)":      {"color": COLORS["teal"],      "linestyle": ":",  "marker": "P", "dashes": (1, 1.5)},
-    "Reflect (ISE-min)":   {"color": COLORS["grey"],      "linestyle": "-.", "marker": "h", "dashes": (4, 1.5, 1, 1.5)},
+    "Reflect (Silverman)": {
+        "color": COLORS["green"],
+        "linestyle": "--",
+        "marker": "^",
+        "dashes": (4, 1.5),
+    },
+    "Reflect (LSCV)": {
+        "color": COLORS["teal"],
+        "linestyle": ":",
+        "marker": "P",
+        "dashes": (1, 1.5),
+    },
+    "Reflect (ISE-min)": {
+        "color": COLORS["grey"],
+        "linestyle": "-.",
+        "marker": "h",
+        "dashes": (4, 1.5, 1, 1.5),
+    },
 }
 
 # ---------------------------------------------------------------------------
 # Convenience helpers for seaborn relplot keyword arguments
 # ---------------------------------------------------------------------------
+
 
 def get_color_map():
     """Return ``{Method label: color}`` for seaborn ``palette``."""
@@ -147,14 +202,30 @@ def get_method_order():
     """Ordered list of method labels (matches ``METHOD_STYLES`` insertion order)."""
     return list(METHOD_STYLES.keys())
 
+
 # ---------------------------------------------------------------------------
 # Ablation study styles (3 baselines)
 # ---------------------------------------------------------------------------
 
 ABLATION_STYLES = {
-    "MODEL_A": {"label": "Baseline: Var Only",  "color": COLORS["vermilion"], "linestyle": "dotted",  "marker": "o"},
-    "MODEL_B": {"label": "Baseline: Var + Skew","color": COLORS["green"],     "linestyle": "dashed",  "marker": "s"},
-    "MODEL_C": {"label": "Baseline: Var + Kurt","color": COLORS["blue"],      "linestyle": "dashdot", "marker": "^"},
+    "MODEL_A": {
+        "label": "Baseline: Var Only",
+        "color": COLORS["vermilion"],
+        "linestyle": "dotted",
+        "marker": "o",
+    },
+    "MODEL_B": {
+        "label": "Baseline: Var + Skew",
+        "color": COLORS["green"],
+        "linestyle": "dashed",
+        "marker": "s",
+    },
+    "MODEL_C": {
+        "label": "Baseline: Var + Kurt",
+        "color": COLORS["blue"],
+        "linestyle": "dashdot",
+        "marker": "^",
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -171,11 +242,11 @@ KERNEL_SHAPE_COLORS = [
 ]
 
 KERNEL_SHAPE_STYLES = [
-    {"linestyle": "-",  "marker": "o"},
+    {"linestyle": "-", "marker": "o"},
     {"linestyle": "--", "marker": "s"},
-    {"linestyle": ":",  "marker": "^"},
+    {"linestyle": ":", "marker": "^"},
     {"linestyle": "-.", "marker": "D"},
-    {"linestyle": (0, (5, 1)),           "marker": "v"},
+    {"linestyle": (0, (5, 1)), "marker": "v"},
     {"linestyle": (0, (3, 1, 1, 1, 1, 1)), "marker": "P"},
 ]
 
@@ -185,15 +256,20 @@ KERNEL_SHAPE_STYLES = [
 
 # Define the kernel-family groups and their ordering
 METHOD_GROUPS = {
-    "Beta":    ["Beta (Ref)", "Beta (LSCV)", "Beta (Oracle)", "Beta (ISE)"],
-    "Logit":   ["Logit (Silverman)", "Logit (LSCV)", "Logit (ISE-min)"],
+    "Beta": ["Beta (Ref)", "Beta (LSCV)", "Beta (Oracle)", "Beta (ISE)"],
+    "Logit": ["Logit (Silverman)", "Logit (LSCV)", "Logit (ISE-min)"],
     "Reflect": ["Reflect (Silverman)", "Reflect (LSCV)", "Reflect (ISE-min)"],
 }
 
 
-def build_grouped_legend(ax_or_g, ncol=3, loc="lower center",
-                         bbox_to_anchor=(0.5, -0.15), frameon=False,
-                         **legend_kw):
+def build_grouped_legend(
+    ax_or_g,
+    ncol=3,
+    loc="lower center",
+    bbox_to_anchor=(0.5, -0.15),
+    frameon=False,
+    **legend_kw,
+):
     """Create a legend with methods grouped by kernel family.
 
     Builds handles directly from ``METHOD_STYLES`` so the legend is
@@ -233,8 +309,7 @@ def build_grouped_legend(ax_or_g, ncol=3, loc="lower center",
     ordered_labels = []
     for group_name, members in METHOD_GROUPS.items():
         # Group header — bold text, invisible handle
-        blank = mlines.Line2D([], [], color="none", marker="None",
-                              linestyle="None")
+        blank = mlines.Line2D([], [], color="none", marker="None", linestyle="None")
         ordered_handles.append(blank)
         ordered_labels.append(f"$\\bf{{{group_name}}}$")
 
@@ -243,7 +318,8 @@ def build_grouped_legend(ax_or_g, ncol=3, loc="lower center",
             if style is None:
                 continue
             handle = mlines.Line2D(
-                [], [],
+                [],
+                [],
                 color=style["color"],
                 linestyle=style["linestyle"],
                 marker=style["marker"],
@@ -257,8 +333,7 @@ def build_grouped_legend(ax_or_g, ncol=3, loc="lower center",
         n_pad = max_group - len(members)
         for _ in range(n_pad):
             ordered_handles.append(
-                mlines.Line2D([], [], color="none", marker="None",
-                              linestyle="None")
+                mlines.Line2D([], [], color="none", marker="None", linestyle="None")
             )
             ordered_labels.append("")
 

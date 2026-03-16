@@ -91,12 +91,13 @@ def generate_appendix_tables(csv_path, output_dir):
     # ---------------------------------------------------------
     d1_path = os.path.join(output_dir, "table_d1_lscv_pvalues.tex")
     with open(d1_path, "w") as f:
-        f.write("% Suggested caption: LSCV scores for real-world datasets. Bold indicates the best score per dataset. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n")
+        f.write(
+            "% Suggested caption: LSCV scores for real-world datasets. Bold indicates the best score per dataset. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
+        )
         f.write(r"\begin{tabular}{llc}" + "\n")
         f.write(r"\hline" + "\n")
         f.write(
-            r"\textbf{Dataset} & \textbf{Method} & \textbf{LSCV Score} \\ \hline"
-            + "\n"
+            r"\textbf{Dataset} & \textbf{Method} & \textbf{LSCV Score} \\ \hline" + "\n"
         )
 
         for dataset in datasets:
@@ -139,18 +140,24 @@ def generate_appendix_tables(csv_path, output_dir):
     # ---------------------------------------------------------
     # Table D.2: Log-Likelihood Results with mean (median) from per-fold data
     # ---------------------------------------------------------
-    per_fold_path = str(DATA_DIR / "experiment2" / "per_fold" / "experiment_2_per_fold_results.csv")
+    per_fold_path = str(
+        DATA_DIR / "experiment2" / "per_fold" / "experiment_2_per_fold_results.csv"
+    )
     try:
         df_folds = pd.read_csv(per_fold_path)
         df_folds = df_folds[df_folds["method"].isin(target_methods)]
         has_per_fold = True
     except FileNotFoundError:
-        print(f"Warning: Per-fold data not found at {per_fold_path}, using summary values.")
+        print(
+            f"Warning: Per-fold data not found at {per_fold_path}, using summary values."
+        )
         has_per_fold = False
 
     d2_path = os.path.join(output_dir, "table_d2_loglikelihood.tex")
     with open(d2_path, "w") as f:
-        f.write("% Suggested caption: Mean log-likelihood (median in parentheses) from cross-validated held-out folds. Higher is better. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n")
+        f.write(
+            "% Suggested caption: Mean log-likelihood (median in parentheses) from cross-validated held-out folds. Higher is better. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
+        )
         f.write(r"\begin{tabular}{llc}" + "\n")
         f.write(r"\hline" + "\n")
         f.write(
@@ -170,7 +177,9 @@ def generate_appendix_tables(csv_path, output_dir):
             # Compute mean and median from per-fold data if available
             if has_per_fold:
                 fold_subset = df_folds[df_folds["dataset"] == dataset]
-                fold_stats = fold_subset.groupby("method")["log_likelihood"].agg(["mean", "median"])
+                fold_stats = fold_subset.groupby("method")["log_likelihood"].agg(
+                    ["mean", "median"]
+                )
             else:
                 fold_stats = None
 
@@ -191,11 +200,15 @@ def generate_appendix_tables(csv_path, output_dir):
                 if fold_stats is not None and method_name in fold_stats.index:
                     ll_mean = fold_stats.loc[method_name, "mean"]
                     ll_median = fold_stats.loc[method_name, "median"]
-                    mean_str = format_value(ll_mean, best_ll, is_min_best=False, decimals=2)
+                    mean_str = format_value(
+                        ll_mean, best_ll, is_min_best=False, decimals=2
+                    )
                     ll_str = f"{mean_str} ({ll_median:.2f})"
                 else:
                     ll_val = row["log_likelihood"]
-                    ll_str = format_value(ll_val, best_ll, is_min_best=False, decimals=2)
+                    ll_str = format_value(
+                        ll_val, best_ll, is_min_best=False, decimals=2
+                    )
 
                 # Significance asterisks for non-reference methods
                 if method_name != "BETA_ROT":

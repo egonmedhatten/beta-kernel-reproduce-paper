@@ -61,11 +61,15 @@ def generate_latex_file(csv_path, output_path):
     df = df[df["method"].isin(target_methods)]
 
     # Load per-fold data for mean (median) heldout density
-    per_fold_path = str(DATA_DIR / "experiment2" / "per_fold" / "experiment_2_per_fold_results.csv")
+    per_fold_path = str(
+        DATA_DIR / "experiment2" / "per_fold" / "experiment_2_per_fold_results.csv"
+    )
     try:
         df_folds = pd.read_csv(per_fold_path)
         df_folds = df_folds[df_folds["method"].isin(target_methods)]
-        fold_stats = df_folds.groupby(["dataset", "method"])["mean_heldout_density"].agg(["mean", "median"])
+        fold_stats = df_folds.groupby(["dataset", "method"])[
+            "mean_heldout_density"
+        ].agg(["mean", "median"])
         has_folds = True
     except FileNotFoundError:
         print(f"Warning: Per-fold data not found at {per_fold_path}")
@@ -75,7 +79,9 @@ def generate_latex_file(csv_path, output_path):
 
     with open(output_path, "w") as f:
         # Suggested caption as LaTeX comment
-        f.write("% Suggested caption: Experiment 2 results on real-world datasets. LSCV scores (lower is better), mean heldout density with median in parentheses (higher is better), computation time, and fallback rate. Bold indicates the best value per dataset. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n")
+        f.write(
+            "% Suggested caption: Experiment 2 results on real-world datasets. LSCV scores (lower is better), mean heldout density with median in parentheses (higher is better), computation time, and fallback rate. Bold indicates the best value per dataset. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
+        )
         # Write the table content (no begin/end table, no caption)
         f.write(r"\begin{tabular}{lcccccc}" + "\n")
         f.write(r"\hline" + "\n")
@@ -93,8 +99,14 @@ def generate_latex_file(csv_path, output_path):
 
             # Find best heldout density (max is best)
             if has_folds:
-                ds_fold_stats = fold_stats.loc[dataset] if dataset in fold_stats.index.get_level_values(0) else None
-                best_density = ds_fold_stats["mean"].max() if ds_fold_stats is not None else None
+                ds_fold_stats = (
+                    fold_stats.loc[dataset]
+                    if dataset in fold_stats.index.get_level_values(0)
+                    else None
+                )
+                best_density = (
+                    ds_fold_stats["mean"].max() if ds_fold_stats is not None else None
+                )
             else:
                 ds_fold_stats = None
                 best_density = None

@@ -42,7 +42,6 @@ from tqdm.auto import tqdm
 from KDE import BetaKernelKDE
 from KDE_Gauss import GaussianKDE
 
-
 # --- Global Settings ---
 N_REPLICATIONS = 1000  # Full run
 SAMPLE_SIZES = [50, 100, 250, 500, 1000, 2000]  # Full run
@@ -629,7 +628,6 @@ def main():
         f_out = open(OUTPUT_CSV_FILE, "w", newline="")
         write_header = True
 
-    
     print("\nPre-computing Oracle integrals...")
     oracle_integrals_map = {}
     for dist_name, dist_config in DISTRIBUTIONS.items():
@@ -647,7 +645,6 @@ def main():
     master_seed_seq = SeedSequence(MASTER_SEED)
     child_seeds = master_seed_seq.spawn(N_REPLICATIONS)
 
-    
     total_runs = len(DISTRIBUTIONS) * len(SAMPLE_SIZES) * N_REPLICATIONS
     jobs_to_run = []
 
@@ -676,7 +673,6 @@ def main():
         f_out.close()
         return
 
-    
     try:
         # You can set max_workers to a specific number, e.g., max_workers=16
         # By default, it uses all available cores.

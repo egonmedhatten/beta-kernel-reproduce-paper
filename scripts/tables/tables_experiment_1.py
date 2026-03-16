@@ -301,27 +301,40 @@ def print_appendix_tables(df_raw, method_order, latex_path=None):
                 print(f"Error saving LaTeX file {filename}: {e}")
 
     lscv_cols = [
-        f"{m}_lscv_score"
-        for m in method_order
-        if f"{m}_lscv_score" in df_mean.columns
+        f"{m}_lscv_score" for m in method_order if f"{m}_lscv_score" in df_mean.columns
     ]
     if lscv_cols:
-        create_table(lscv_cols, "lscv_score", "a_lscv", ".4f",
-                     caption="Mean LSCV scores (median in parentheses) per distribution and sample size.")
+        create_table(
+            lscv_cols,
+            "lscv_score",
+            "a_lscv",
+            ".4f",
+            caption="Mean LSCV scores (median in parentheses) per distribution and sample size.",
+        )
 
     ise_cols = [
         f"{m}_ise_score" for m in method_order if f"{m}_ise_score" in df_mean.columns
     ]
     if ise_cols:
-        create_table(ise_cols, "ise_score", "b_ise", ".4f",
-                     caption="Mean ISE scores (median in parentheses) per distribution and sample size.")
+        create_table(
+            ise_cols,
+            "ise_score",
+            "b_ise",
+            ".4f",
+            caption="Mean ISE scores (median in parentheses) per distribution and sample size.",
+        )
 
     time_cols = [
         f"{m}_comp_time" for m in method_order if f"{m}_comp_time" in df_mean.columns
     ]
     if time_cols:
-        create_table(time_cols, "comp_time", "c_time", ".4f",
-                     caption="Mean computation times in seconds (median in parentheses) per distribution and sample size.")
+        create_table(
+            time_cols,
+            "comp_time",
+            "c_time",
+            ".4f",
+            caption="Mean computation times in seconds (median in parentheses) per distribution and sample size.",
+        )
 
     if "BETA_ROT_is_fallback" in df_mean.columns:
         df_fallback = df_mean[["BETA_ROT_is_fallback"]].copy()
@@ -347,7 +360,9 @@ def print_appendix_tables(df_raw, method_order, latex_path=None):
                     escape=False, multirow=True, na_rep="-"
                 )
                 with open(filename, "w") as f:
-                    f.write("% Suggested caption: Mean fallback rate for the proposed rule-of-thumb method per distribution and sample size.\n")
+                    f.write(
+                        "% Suggested caption: Mean fallback rate for the proposed rule-of-thumb method per distribution and sample size.\n"
+                    )
                     f.write(latex_string)
                 print(f"Successfully saved LaTeX table to: {filename}")
             except Exception as e:

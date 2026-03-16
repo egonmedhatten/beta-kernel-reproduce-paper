@@ -10,7 +10,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-from _plot_styles import setup_theme, KERNEL_SHAPE_COLORS, KERNEL_SHAPE_STYLES, FIGURE_WIDTH_FULL
+from _plot_styles import (
+    setup_theme,
+    KERNEL_SHAPE_COLORS,
+    KERNEL_SHAPE_STYLES,
+    FIGURE_WIDTH_FULL,
+)
 
 setup_theme()
 
@@ -78,11 +83,15 @@ def plot_chen_f2_kernels():
             y = beta.pdf(t, a, b_param)
             label = f"$x={x_eval}$ ($\\alpha={a:.2f}, \\beta={b_param:.2f}$)"
             ax.plot(
-                t, y, lw=1.8, label=label,
+                t,
+                y,
+                lw=1.8,
+                label=label,
                 color=KERNEL_SHAPE_COLORS[i],
                 linestyle=KERNEL_SHAPE_STYLES[i]["linestyle"],
                 marker=KERNEL_SHAPE_STYLES[i]["marker"],
-                markevery=100, markersize=6,
+                markevery=100,
+                markersize=6,
             )
         else:
             print(f"Invalid parameters for x={x_eval}: a={a}, b={b_param}")

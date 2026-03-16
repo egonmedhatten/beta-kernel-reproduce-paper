@@ -18,15 +18,15 @@ REPO_ROOT = Path(__file__).resolve().parent
 
 SCRIPTS = [
     # --- Tables ---
-    ("Experiment 1 tables",            "scripts/tables/tables_experiment_1.py"),
-    ("Experiment 2 table",             "scripts/tables/table_experiment_2.py"),
-    ("Experiment 2 appendix tables",   "scripts/tables/tables_experiment_2_appendix.py"),
-    ("Ablation study table",           "scripts/tables/table_ablation.py"),
+    ("Experiment 1 tables", "scripts/tables/tables_experiment_1.py"),
+    ("Experiment 2 table", "scripts/tables/table_experiment_2.py"),
+    ("Experiment 2 appendix tables", "scripts/tables/tables_experiment_2_appendix.py"),
+    ("Ablation study table", "scripts/tables/table_ablation.py"),
     # --- Figures ---
-    ("Experiment 1 figures",           "scripts/plot/plot_experiment_1.py"),
-    ("Experiment 2 figures",           "scripts/plot/plot_experiment_2.py"),
-    ("Ablation study figure",          "scripts/plot/plot_ablation.py"),
-    ("Kernel shape figure",            "scripts/plot/plot_kernel_shapes.py"),
+    ("Experiment 1 figures", "scripts/plot/plot_experiment_1.py"),
+    ("Experiment 2 figures", "scripts/plot/plot_experiment_2.py"),
+    ("Ablation study figure", "scripts/plot/plot_ablation.py"),
+    ("Kernel shape figure", "scripts/plot/plot_kernel_shapes.py"),
     # --- Supplementary CSVs ---
     ("Experiment 1 supplementary CSV", "scripts/export/export_experiment_1.py"),
     ("Experiment 2 supplementary CSV", "scripts/export/export_experiment_2.py"),

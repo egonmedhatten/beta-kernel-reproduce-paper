@@ -39,8 +39,6 @@ from _plot_styles import (
 setup_theme()
 
 
-
-
 def add_emphasis_to_plot(g, df_agg, y_col_name, x_col_name, label_to_emphasize, width):
     """
     Finds a specific line in a FacetGrid and re-plots it with emphasis.
@@ -77,8 +75,6 @@ def add_emphasis_to_plot(g, df_agg, y_col_name, x_col_name, label_to_emphasize, 
                 label=label_to_emphasize,
                 zorder=10,
             )
-
-
 
 
 def load_and_melt_data(csv_file):
@@ -270,9 +266,7 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
         markers=get_seaborn_markers(),
     )
 
-    g.set(
-        xscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )
+    g.set(xscale="log", xlabel="Sample Size ($n$)", ylabel="")
     g.fig.supylabel("Mean LSCV Score")
 
     g.set_titles(template="{col_name}")
@@ -339,9 +333,7 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
         markers=get_seaborn_markers(),
     )
 
-    g.set(
-        xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )
+    g.set(xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel="")
     g.fig.supylabel("Mean ISE Score")
 
     g.set_titles(template="{col_name}")
@@ -402,9 +394,7 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
         markers=get_seaborn_markers(),
     )
 
-    g.set(
-        xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )
+    g.set(xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel="")
     g.fig.supylabel("Mean Computation Time (s)")
 
     g.set_titles(template="{col_name}")
@@ -480,16 +470,12 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
         markers=get_seaborn_markers(),
     )
 
-    g.set(
-        xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )
+    g.set(xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel="")
     g.fig.supylabel("Mean Bandwidth ($h$)")
 
     g.set_titles(template="{col_name}")
     if SHOW_SUPTITLE:
-        g.fig.suptitle(
-            "Bandwidth ($h$) Comparison vs. Sample Size (on 'Nice' Dists)"
-        )
+        g.fig.suptitle("Bandwidth ($h$) Comparison vs. Sample Size (on 'Nice' Dists)")
 
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
@@ -502,7 +488,11 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
         )
 
     sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.22), ncol=3, frameon=False,
+        g,
+        "lower center",
+        bbox_to_anchor=(0.5, -0.22),
+        ncol=3,
+        frameon=False,
         title=None,
     )
     g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
@@ -566,9 +556,7 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
         markers=get_seaborn_markers(),
     )
 
-    g.set(
-        xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
-    )
+    g.set(xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel="")
     g.fig.supylabel("Mean Integral Error")
 
     g.set_titles(template="{col_name}")
@@ -586,7 +574,11 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
         )
 
     sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.22), ncol=3, frameon=False,
+        g,
+        "lower center",
+        bbox_to_anchor=(0.5, -0.22),
+        ncol=3,
+        frameon=False,
         title=None,
     )
     g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
@@ -652,9 +644,7 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
         markers=get_seaborn_markers(),
     )
 
-    g.set(
-        xscale="log", yscale="log", xlabel="Bandwidth ($h$)", ylabel=""
-    )
+    g.set(xscale="log", yscale="log", xlabel="Bandwidth ($h$)", ylabel="")
     g.fig.supylabel("Mean Integral Error")
 
     g.set_titles(template="{col_name}")
@@ -672,7 +662,11 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
         )
 
     sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.22), ncol=3, frameon=False,
+        g,
+        "lower center",
+        bbox_to_anchor=(0.5, -0.22),
+        ncol=3,
+        frameon=False,
         title=None,
     )
     g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])

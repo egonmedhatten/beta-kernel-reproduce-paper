@@ -489,7 +489,9 @@ def main():
 
     # --- 6. Save to CSV ---
     summary_file = str(DATA_DIR / "experiment2" / "experiment_2_summary.csv")
-    per_fold_file = str(DATA_DIR / "experiment2" / "per_fold" / "experiment_2_per_fold_results.csv")
+    per_fold_file = str(
+        DATA_DIR / "experiment2" / "per_fold" / "experiment_2_per_fold_results.csv"
+    )
     os.makedirs(str(DATA_DIR / "experiment2"), exist_ok=True)
     os.makedirs(str(DATA_DIR / "experiment2" / "per_fold"), exist_ok=True)
 

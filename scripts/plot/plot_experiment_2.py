@@ -85,7 +85,9 @@ def fetch_data():
 def main():
     print("Loading results...")
     try:
-        df_summary = pd.read_csv(str(DATA_DIR / "experiment2" / "experiment_2_summary.csv"))
+        df_summary = pd.read_csv(
+            str(DATA_DIR / "experiment2" / "experiment_2_summary.csv")
+        )
     except FileNotFoundError:
         print("Error: CSV not found.")
         return
@@ -136,7 +138,7 @@ def main():
             linestyle = style.get("linestyle", "-")
             marker = style.get("marker", None)
             # Proposed method gets a thicker line and higher z-order
-            is_proposed = (method_name == "BETA_ROT")
+            is_proposed = method_name == "BETA_ROT"
             lw = 2.2 if is_proposed else 1.5
             zorder = 10 if is_proposed else 5
             alpha = 1.0 if is_proposed else 0.85
@@ -148,9 +150,16 @@ def main():
                 pdf_plot = kde.pdf(x_plot)
 
                 ax.plot(
-                    x_plot, pdf_plot, label=label_text, color=color,
-                    linestyle=linestyle, linewidth=lw, zorder=zorder,
-                    alpha=alpha, marker=marker, markevery=80,
+                    x_plot,
+                    pdf_plot,
+                    label=label_text,
+                    color=color,
+                    linestyle=linestyle,
+                    linewidth=lw,
+                    zorder=zorder,
+                    alpha=alpha,
+                    marker=marker,
+                    markevery=80,
                     markersize=6,
                 )
 

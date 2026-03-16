@@ -41,11 +41,12 @@ def significance_stars(p):
         return "$^{*}$"
     return ""
 
+
 def main():
     print("\n===========================================================")
     print("--- Running Transposed Ablation Table Script ---")
     print("===========================================================\n")
-    
+
     try:
         df = pd.read_csv(INPUT_CSV)
     except FileNotFoundError:
@@ -56,25 +57,26 @@ def main():
     df_clean = df.dropna(subset=lscv_cols)
 
     distributions = df_clean["distribution"].unique()
-    
+
     # We build a dictionary where keys are Metric names,
     # and values are lists of results corresponding to each distribution column.
-    metrics_dict = {
-        f"{MODEL_NAMES[m]} LSCV": [] for m in MODELS
-    }
-    metrics_dict.update({
-        f"Win Rate (vs {MODEL_NAMES[m]})": [] for m in ["MODEL_A", "MODEL_B", "MODEL_C"]
-    })
+    metrics_dict = {f"{MODEL_NAMES[m]} LSCV": [] for m in MODELS}
+    metrics_dict.update(
+        {
+            f"Win Rate (vs {MODEL_NAMES[m]})": []
+            for m in ["MODEL_A", "MODEL_B", "MODEL_C"]
+        }
+    )
 
     for dist in distributions:
         dist_data = df_clean[df_clean["distribution"] == dist]
         d_scores = dist_data["MODEL_D_lscv"]
-        
+
         # 1. Compute means and medians
         means = {m: dist_data[f"{m}_lscv"].mean() for m in MODELS}
         medians = {m: dist_data[f"{m}_lscv"].median() for m in MODELS}
         best_mean = min(means.values())
-        
+
         # 2. Compute p-values for non-reference models vs MODEL_D
         pvals = {}
         for m in ["MODEL_A", "MODEL_B", "MODEL_C"]:
@@ -84,7 +86,7 @@ def main():
                 pvals[m] = 1.0
             else:
                 _, pvals[m] = wilcoxon(m_scores, d_scores)
-        
+
         # 3. Format LSCV rows as mean (median) with bolding and asterisks
         for m in MODELS:
             mean_str = f"{means[m]:.4f}"
@@ -95,12 +97,14 @@ def main():
             metrics_dict[f"{MODEL_NAMES[m]} LSCV"].append(
                 f"{mean_str} ({median_str}){stars}"
             )
-            
+
         # 4. Format Win Rates
         for m in ["MODEL_A", "MODEL_B", "MODEL_C"]:
             m_scores = dist_data[f"{m}_lscv"]
             win_rate = (d_scores < m_scores).mean()
-            metrics_dict[f"Win Rate (vs {MODEL_NAMES[m]})"].append(f"{win_rate * 100:.1f}\\%")
+            metrics_dict[f"Win Rate (vs {MODEL_NAMES[m]})"].append(
+                f"{win_rate * 100:.1f}\\%"
+            )
 
     # Convert to DataFrame (Rows = Metrics, Columns = Distributions)
     df_out = pd.DataFrame(metrics_dict, index=distributions).T
@@ -110,7 +114,9 @@ def main():
     # For the console view, temporarily strip LaTeX syntax so it's readable
     console_df = df_out.copy()
     for col in console_df.columns:
-        console_df[col] = console_df[col].str.replace("\\%", "%").str.replace("$<$", "<")
+        console_df[col] = (
+            console_df[col].str.replace("\\%", "%").str.replace("$<$", "<")
+        )
     print(console_df.to_string())
 
     print("\n--- LaTeX Table Output (For Supplementary Material) ---")
@@ -118,33 +124,41 @@ def main():
     latex_table = df_out.style.to_latex(
         caption="Ablation study of fallback heuristic components across 6,000 trials per distribution. Displaying mean LSCV scores with median in parentheses (lower is better), win rates, and significance of Wilcoxon signed-rank tests comparing the proposed rule against simpler parameterizations. Significance levels: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
         label="tab:ablation_study_aggregated",
-        hrules=True
+        hrules=True,
     )
-    
+
     # Inject standard LaTeX table formatting
-    latex_table = latex_table.replace("\\begin{table}\n", "\\begin{table}[ht]\n\\centering\n")
-    
+    latex_table = latex_table.replace(
+        "\\begin{table}\n", "\\begin{table}[ht]\n\\centering\n"
+    )
+
     # Inject a midrule to visually separate the LSCV scores from the Win Rate rows
-    latex_table = latex_table.replace("\nWin Rate (vs Var Only)", "\n\\midrule\nWin Rate (vs Var Only)")
-    
+    latex_table = latex_table.replace(
+        "\nWin Rate (vs Var Only)", "\n\\midrule\nWin Rate (vs Var Only)"
+    )
+
     print(latex_table)
 
     # By removing caption and label, Pandas only generates the \begin{tabular} block
     latex_tabular = df_out.style.to_latex(hrules=True)
-    
+
     # Inject a midrule to visually separate the LSCV scores from the Win Rate rows
     latex_tabular = latex_tabular.replace(
-        "\nWin Rate (vs Var Only)", 
-        "\n\\midrule\nWin Rate (vs Var Only)"
+        "\nWin Rate (vs Var Only)", "\n\\midrule\nWin Rate (vs Var Only)"
     )
 
     try:
         with open(TABLES_DIR / "ablation_table.tex", "w") as f:
-            f.write("% Suggested caption: Ablation study of fallback heuristic components across 6,000 trials per distribution. Mean LSCV scores (median in parentheses); lower is better. Win rates of the proposed rule. Significance of Wilcoxon signed-rank tests: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n")
+            f.write(
+                "% Suggested caption: Ablation study of fallback heuristic components across 6,000 trials per distribution. Mean LSCV scores (median in parentheses); lower is better. Win rates of the proposed rule. Significance of Wilcoxon signed-rank tests: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
+            )
             f.write(latex_tabular)
-        print(f"\nSuccessfully saved LaTeX table to: {TABLES_DIR / 'ablation_table.tex'}")
+        print(
+            f"\nSuccessfully saved LaTeX table to: {TABLES_DIR / 'ablation_table.tex'}"
+        )
     except Exception as e:
         print(f"\nError saving LaTeX file: {e}")
+
 
 if __name__ == "__main__":
 
