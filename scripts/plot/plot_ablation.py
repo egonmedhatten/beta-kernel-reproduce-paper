@@ -16,7 +16,7 @@ from _paths import DATA_DIR, PLOTS_DIR
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from _plot_styles import setup_theme, ABLATION_STYLES
+from _plot_styles import setup_theme, ABLATION_STYLES, SHOW_SUPTITLE, FIGURE_WIDTH_FULL
 
 setup_theme()
 
@@ -46,7 +46,7 @@ def main():
     distributions = grouped['distribution'].unique()
     
     # Set up a 2x2 grid for the 4 distributions
-    fig, axes = plt.subplots(2, 2, figsize=(10, 8), sharex=True)
+    fig, axes = plt.subplots(2, 2, figsize=(FIGURE_WIDTH_FULL, 5.5), sharex=True)
     axes = axes.flatten()
 
     for idx, dist in enumerate(distributions):
@@ -68,26 +68,26 @@ def main():
                 color=style["color"], 
                 linestyle=style["linestyle"], 
                 marker=style["marker"],
-                markersize=6,
-                linewidth=2
+                markersize=7,
+                linewidth=1.8
             )
 
         # Add a reference line at y=0 (where Proposed == Baseline)
-        ax.axhline(0, color='gray', linestyle='-', linewidth=1.5, alpha=0.6, zorder=0)
+        ax.axhline(0, color='gray', linestyle='-', linewidth=1.2, alpha=0.6, zorder=0)
         
-        ax.set_title(f"Distribution: {dist}")
+        ax.set_title(dist)
         ax.set_xscale('log') # Log scale for n is usually best
         ax.set_xticks([50, 100, 250, 500, 1000, 2000])
         ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
         ax.grid(True, linestyle=':', alpha=0.6)
 
     # Global formatting
-    fig.supxlabel("Sample Size (n)", y=0.02)
-    fig.supylabel("Delta Median LSCV (Proposed - Baseline)", x=0.02)
+    fig.supxlabel("Sample Size ($n$)", y=0.02)
+    fig.supylabel(r"$\Delta$ Median LSCV (Proposed $-$ Baseline)", x=0.02)
     
     # Single legend at the top
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3, frameon=False)
+    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.04), ncol=3, frameon=False)
     
     plt.tight_layout()
     

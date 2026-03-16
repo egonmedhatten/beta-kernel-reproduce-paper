@@ -17,7 +17,7 @@ import os
 from KDE import BetaKernelKDE
 from KDE_Gauss import GaussianKDE
 
-from _plot_styles import setup_theme, METHOD_STYLES
+from _plot_styles import setup_theme, METHOD_STYLES, SHOW_SUPTITLE, FIGURE_WIDTH_FULL
 
 setup_theme()
 
@@ -96,8 +96,8 @@ def main():
 
     dataset_names = list(datasets.keys())
 
-    # 6x10 is a good ratio for a 3-row vertical stack in a standard paper column
-    fig, axes = plt.subplots(3, 1, figsize=(6, 10), sharex=True)
+    # Single-column figure: full width, 3 stacked subplots
+    fig, axes = plt.subplots(3, 1, figsize=(FIGURE_WIDTH_FULL, 8.5), sharex=True)
 
     # Evaluation grid
     x_plot = np.linspace(0, 1, 1000, endpoint=True)
@@ -137,9 +137,9 @@ def main():
             marker = style.get("marker", None)
             # Proposed method gets a thicker line and higher z-order
             is_proposed = (method_name == "BETA_ROT")
-            lw = 2.5 if is_proposed else 1.8
+            lw = 2.2 if is_proposed else 1.5
             zorder = 10 if is_proposed else 5
-            alpha = 1.0 if is_proposed else 0.9
+            alpha = 1.0 if is_proposed else 0.85
 
             try:
                 kde = config["class"](**config["init_args"])
@@ -150,8 +150,8 @@ def main():
                 ax.plot(
                     x_plot, pdf_plot, label=label_text, color=color,
                     linestyle=linestyle, linewidth=lw, zorder=zorder,
-                    alpha=alpha, marker=marker, markevery=50,
-                    markersize=5,
+                    alpha=alpha, marker=marker, markevery=80,
+                    markersize=6,
                 )
 
             except Exception as e:
@@ -160,7 +160,6 @@ def main():
         # 3. Axis Styling per subplot
         readable_title = DATASET_TITLES.get(data_name, data_name)
         ax.set_title(readable_title, fontweight="bold", pad=10)
-        ax.set_ylabel("Density")
 
         # Add subtle grid
         ax.grid(True, linestyle=":", alpha=0.6, color="gray", linewidth=0.7)
@@ -171,6 +170,7 @@ def main():
 
     # Set X-label only on the bottom plot
     axes[-1].set_xlabel("Feature Value (Normalized)")
+    fig.supylabel("Density")
 
     # Create a unified legend
     # Get handles/labels from the first plot (assuming all plots have same methods)

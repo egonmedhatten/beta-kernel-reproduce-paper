@@ -27,10 +27,13 @@ import os
 from _plot_styles import (
     setup_theme,
     METHOD_STYLES,
+    SHOW_SUPTITLE,
+    FIGURE_WIDTH_FULL,
     get_color_map,
     get_seaborn_dashes,
     get_seaborn_markers,
     get_method_order,
+    build_grouped_legend,
 )
 
 setup_theme()
@@ -245,6 +248,7 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
         .reset_index()
     )
 
+    _panel_h = FIGURE_WIDTH_FULL / 3 / 0.9  # ~2.4in per panel
     g = sns.relplot(
         data=df_agg,
         kind="line",
@@ -255,11 +259,11 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
         col="dist_name",
         col_wrap=3,
         col_order=dist_order,
-        height=3.5,
-        aspect=1.2,
+        height=_panel_h,
+        aspect=0.9,
         facet_kws={"sharey": False, "despine": True},
         legend="full",
-        lw=2.0,
+        lw=1.8,
         palette=get_color_map(),
         style_order=get_method_order(),
         dashes=get_seaborn_dashes(),
@@ -269,12 +273,11 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
     g.set(
         xscale="log", xlabel="Sample Size ($n$)", ylabel=""
     )
-    for ax in g.axes.flat:
-        if ax.get_subplotspec().is_first_col():
-            ax.set_ylabel("Mean LSCV Score (Lower is Better)")
+    g.fig.supylabel("Mean LSCV Score")
 
     g.set_titles(template="{col_name}")
-    g.fig.suptitle("LSCV Score (Primary Metric) vs. Sample Size", fontsize=16)
+    if SHOW_SUPTITLE:
+        g.fig.suptitle("LSCV Score (Primary Metric) vs. Sample Size")
 
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
@@ -286,10 +289,8 @@ def plot_lscv_vs_n(df_long, dist_order, output_file, emphasis_config):
             width=emphasis_config["width"],
         )
 
-    sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=4, frameon=False
-    )
-    g.fig.tight_layout(rect=[0, 0, 1, 0.95])
+    build_grouped_legend(g, ncol=3, bbox_to_anchor=(0.5, -0.18))
+    g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
 
     g.savefig(output_file, bbox_inches="tight")
     plt.close(g.fig)
@@ -316,6 +317,7 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
     elif len(nice_dist_order) == 4:
         col_wrap_val = 2
 
+    _panel_h = FIGURE_WIDTH_FULL / col_wrap_val / 0.9
     g = sns.relplot(
         data=df_agg,
         kind="line",
@@ -326,11 +328,11 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
         col="dist_name",
         col_wrap=col_wrap_val,
         col_order=nice_dist_order,
-        height=3.5,
-        aspect=1.2,
+        height=_panel_h,
+        aspect=0.9,
         facet_kws={"sharey": False, "despine": True},
         legend="full",
-        lw=2.0,
+        lw=1.8,
         palette=get_color_map(),
         style_order=get_method_order(),
         dashes=get_seaborn_dashes(),
@@ -340,14 +342,13 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
     )
-    for ax in g.axes.flat:
-        if ax.get_subplotspec().is_first_col():
-            ax.set_ylabel("Mean ISE Score (Lower is Better)")
+    g.fig.supylabel("Mean ISE Score")
 
     g.set_titles(template="{col_name}")
-    g.fig.suptitle(
-        "ISE Score (Validation Metric) vs. Sample Size (on 'Nice' Dists)", fontsize=16
-    )
+    if SHOW_SUPTITLE:
+        g.fig.suptitle(
+            "ISE Score (Validation Metric) vs. Sample Size (on 'Nice' Dists)"
+        )
 
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
@@ -359,10 +360,8 @@ def plot_ise_vs_n(df_long, dist_order, output_file, emphasis_config):
             width=emphasis_config["width"],
         )
 
-    sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=4, frameon=False
-    )
-    g.fig.tight_layout(rect=[0, 0, 1, 0.95])
+    build_grouped_legend(g, ncol=3, bbox_to_anchor=(0.5, -0.18))
+    g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
 
     g.savefig(output_file, bbox_inches="tight")
     plt.close(g.fig)
@@ -381,6 +380,7 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
         .reset_index()
     )
 
+    _panel_h = FIGURE_WIDTH_FULL / 3 / 0.9
     g = sns.relplot(
         data=df_agg,
         kind="line",
@@ -391,11 +391,11 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
         col="dist_name",
         col_wrap=3,
         col_order=dist_order,
-        height=3.5,
-        aspect=1.2,
+        height=_panel_h,
+        aspect=0.9,
         facet_kws={"sharey": False, "despine": True},
         legend="full",
-        lw=2.0,
+        lw=1.8,
         palette=get_color_map(),
         style_order=get_method_order(),
         dashes=get_seaborn_dashes(),
@@ -405,12 +405,11 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
     )
-    for ax in g.axes.flat:
-        if ax.get_subplotspec().is_first_col():
-            ax.set_ylabel("Mean Computation Time (sec, Lower is Better)")
+    g.fig.supylabel("Mean Computation Time (s)")
 
     g.set_titles(template="{col_name}")
-    g.fig.suptitle("Computation Time vs. Sample Size", fontsize=16)
+    if SHOW_SUPTITLE:
+        g.fig.suptitle("Computation Time vs. Sample Size")
 
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
@@ -422,10 +421,8 @@ def plot_time_vs_n(df_long, dist_order, output_file, emphasis_config):
             width=emphasis_config["width"],
         )
 
-    sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=4, frameon=False
-    )
-    g.fig.tight_layout(rect=[0, 0, 1, 0.95])
+    build_grouped_legend(g, ncol=3, bbox_to_anchor=(0.5, -0.18))
+    g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
 
     g.savefig(output_file, bbox_inches="tight")
     plt.close(g.fig)
@@ -461,6 +458,7 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
     elif len(nice_dist_order) == 4:
         col_wrap_val = 2
 
+    _panel_h = FIGURE_WIDTH_FULL / col_wrap_val / 0.9
     g = sns.relplot(
         data=df_agg,
         kind="line",
@@ -471,11 +469,11 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
         col="dist_name",
         col_wrap=col_wrap_val,
         col_order=nice_dist_order,
-        height=3.5,
-        aspect=1.2,
+        height=_panel_h,
+        aspect=0.9,
         facet_kws={"sharey": False, "despine": True},
         legend="full",
-        lw=2.0,
+        lw=1.8,
         palette=get_color_map(),
         style_order=get_method_order(),
         dashes=get_seaborn_dashes(),
@@ -485,14 +483,13 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
     )
-    for ax in g.axes.flat:
-        if ax.get_subplotspec().is_first_col():
-            ax.set_ylabel("Mean Bandwidth ($h$)")
+    g.fig.supylabel("Mean Bandwidth ($h$)")
 
     g.set_titles(template="{col_name}")
-    g.fig.suptitle(
-        "Bandwidth ($h$) Comparison vs. Sample Size (on 'Nice' Dists)", fontsize=16
-    )
+    if SHOW_SUPTITLE:
+        g.fig.suptitle(
+            "Bandwidth ($h$) Comparison vs. Sample Size (on 'Nice' Dists)"
+        )
 
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
@@ -505,9 +502,10 @@ def plot_bandwidth_vs_n(df_long, dist_order, output_file, emphasis_config):
         )
 
     sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False
+        g, "lower center", bbox_to_anchor=(0.5, -0.22), ncol=3, frameon=False,
+        title=None,
     )
-    g.fig.tight_layout(rect=[0, 0, 1, 0.95])
+    g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
 
     g.savefig(output_file, bbox_inches="tight")
     plt.close(g.fig)
@@ -546,6 +544,7 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
     elif len(nice_dist_order) == 4:
         col_wrap_val = 2
 
+    _panel_h = FIGURE_WIDTH_FULL / col_wrap_val / 0.9
     g = sns.relplot(
         data=df_agg,
         kind="line",
@@ -556,11 +555,11 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
         col="dist_name",
         col_wrap=col_wrap_val,
         col_order=nice_dist_order,
-        height=3.5,
-        aspect=1.2,
+        height=_panel_h,
+        aspect=0.9,
         facet_kws={"sharey": False, "despine": True},
         legend="full",
-        lw=2.0,
+        lw=1.8,
         palette=get_color_map(),
         style_order=get_method_order(),
         dashes=get_seaborn_dashes(),
@@ -570,12 +569,11 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
     g.set(
         xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
     )
-    for ax in g.axes.flat:
-        if ax.get_subplotspec().is_first_col():
-            ax.set_ylabel("Mean error ($|\int\hat{f}(x)dx-1|$)")
+    g.fig.supylabel("Mean Integral Error")
 
     g.set_titles(template="{col_name}")
-    g.fig.suptitle("Integral error of Beta estimate", fontsize=16)
+    if SHOW_SUPTITLE:
+        g.fig.suptitle("Integral error of Beta estimate")
 
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
@@ -588,9 +586,10 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
         )
 
     sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False
+        g, "lower center", bbox_to_anchor=(0.5, -0.22), ncol=3, frameon=False,
+        title=None,
     )
-    g.fig.tight_layout(rect=[0, 0, 1, 0.95])
+    g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
 
     g.savefig(output_file, bbox_inches="tight")
     plt.close(g.fig)
@@ -631,6 +630,7 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
     elif len(nice_dist_order) == 4:
         col_wrap_val = 2
 
+    _panel_h = FIGURE_WIDTH_FULL / col_wrap_val / 0.9
     g = sns.relplot(
         data=df_agg,
         kind="line",
@@ -641,11 +641,11 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
         col="dist_name",
         col_wrap=col_wrap_val,
         col_order=nice_dist_order,
-        height=3.5,
-        aspect=1.2,
+        height=_panel_h,
+        aspect=0.9,
         facet_kws={"sharey": False, "despine": True},
         legend="full",
-        lw=2.0,
+        lw=1.8,
         palette=get_color_map(),
         style_order=get_method_order(),
         dashes=get_seaborn_dashes(),
@@ -653,14 +653,13 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
     )
 
     g.set(
-        xscale="log", yscale="log", xlabel="Sample Size ($n$)", ylabel=""
+        xscale="log", yscale="log", xlabel="Bandwidth ($h$)", ylabel=""
     )
-    for ax in g.axes.flat:
-        if ax.get_subplotspec().is_first_col():
-            ax.set_ylabel("Mean error ($|\int\hat{f}(x)dx-1|$)")
+    g.fig.supylabel("Mean Integral Error")
 
     g.set_titles(template="{col_name}")
-    g.fig.suptitle("Integral error of Beta estimate", fontsize=16)
+    if SHOW_SUPTITLE:
+        g.fig.suptitle("Integral error of Beta estimate")
 
     if emphasis_config["do_emphasis"]:
         add_emphasis_to_plot(
@@ -673,9 +672,10 @@ def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
         )
 
     sns.move_legend(
-        g, "lower center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False
+        g, "lower center", bbox_to_anchor=(0.5, -0.22), ncol=3, frameon=False,
+        title=None,
     )
-    g.fig.tight_layout(rect=[0, 0, 1, 0.95])
+    g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
 
     g.savefig(output_file, bbox_inches="tight")
     plt.close(g.fig)
