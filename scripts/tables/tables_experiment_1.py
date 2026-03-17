@@ -179,7 +179,9 @@ def create_metric_table(
         group_names.append("'Hard' Distributions")
 
     # 2. Build the DataFrame
-    # First, get the mean scores
+    is_time = metric_name == "Time"
+
+    # First, get the mean and median scores
     df_mean = pd.DataFrame.from_dict(
         {
             group: {m: s["mean"] for m, s in stats.items()}
@@ -189,8 +191,20 @@ def create_metric_table(
     ).T
     df_mean = df_mean[group_names]  # Ensure column order
 
-    # Find bests for bolding
-    bests = {col: df_mean[col].idxmin() for col in df_mean.columns}
+    df_median = pd.DataFrame.from_dict(
+        {
+            group: {m: s["median"] for m, s in stats.items()}
+            for group, stats in all_stats.items()
+        },
+        orient="index",
+    ).T
+    df_median = df_median[group_names]
+
+    # Find bests for bolding: use median for non-time, mean for time
+    if is_time:
+        bests = {col: df_mean[col].idxmin() for col in df_mean.columns}
+    else:
+        bests = {col: df_median[col].idxmin() for col in df_median.columns}
 
     # Second, build the final string DataFrame
     df_formatted = pd.DataFrame(index=methods, columns=group_names)
@@ -204,14 +218,16 @@ def create_metric_table(
                 df_formatted.loc[method, group] = "-"
                 continue
 
-            # Format the mean value, with bolding
-            mean_str = f"{mean:.4f}"
-            if method == bests.get(group):
-                mean_str = f"\\textbf{{{mean_str}}}"
-
-            median_str = f"{median:.4f}"
-            stars = significance_stars(p_raw) if method != ref_method else ""
-            df_formatted.loc[method, group] = f"{mean_str} ({median_str}){stars}"
+            if is_time:
+                # Time: report only mean, no median, no significance, no bolding
+                df_formatted.loc[method, group] = f"{mean:.4f}"
+            else:
+                # Non-time: mean (median), bold entire cell based on best median
+                cell = f"{mean:.4f} ({median:.4f})"
+                if method == bests.get(group):
+                    cell = f"\\textbf{{{cell}}}"
+                stars = significance_stars(p_raw) if method != ref_method else ""
+                df_formatted.loc[method, group] = f"{cell}{stars}"
 
     # --- 3. Create Markdown Version ---
     df_md = df_formatted.copy()
@@ -253,15 +269,23 @@ def print_appendix_tables(df_raw, method_order, latex_path=None):
     df_median = df_raw.groupby(["distribution", "n"]).median(numeric_only=True)
 
     def create_table(metric_cols, metric_name, file_suffix, float_format, caption=""):
-        # Build a combined mean (median) string DataFrame
+        is_time = metric_name == "comp_time"
+        # Build a combined string DataFrame
         df_combined = df_mean[metric_cols].copy()
         for col in metric_cols:
             mean_series = df_mean[col]
             median_series = df_median[col]
-            df_combined[col] = [
-                f"{m:.4f} ({md:.4f})" if pd.notna(m) else "N/A"
-                for m, md in zip(mean_series, median_series)
-            ]
+            if is_time:
+                # Time: report only mean
+                df_combined[col] = [
+                    f"{m:.4f}" if pd.notna(m) else "N/A"
+                    for m in mean_series
+                ]
+            else:
+                df_combined[col] = [
+                    f"{m:.4f} ({md:.4f})" if pd.notna(m) else "N/A"
+                    for m, md in zip(mean_series, median_series)
+                ]
 
         df_combined_latex = df_combined.rename(
             columns={
@@ -333,7 +357,7 @@ def print_appendix_tables(df_raw, method_order, latex_path=None):
             "comp_time",
             "c_time",
             ".4f",
-            caption="Mean computation times in seconds (median in parentheses) per distribution and sample size.",
+            caption="Mean computation times in seconds per distribution and sample size.",
         )
 
     if "BETA_ROT_is_fallback" in df_mean.columns:
@@ -419,7 +443,7 @@ if __name__ == "__main__":
             "lscv_score",
             os.path.join(latex_output_path, "main_table_lscv.tex"),
             include_hard_dist=True,
-            caption="Mean LSCV scores (median in parentheses) across distribution groups. Bold indicates the best mean per group. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
+            caption="Mean LSCV scores (median in parentheses) across distribution groups. Bold indicates the best median per group. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
         )
 
         create_metric_table(
@@ -430,7 +454,7 @@ if __name__ == "__main__":
             "ise_score",
             os.path.join(latex_output_path, "main_table_ise.tex"),
             include_hard_dist=False,  # ISE is not valid for 'hard'
-            caption="Mean ISE scores (median in parentheses) across distribution groups. Bold indicates the best mean per group. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
+            caption="Mean ISE scores (median in parentheses) across distribution groups. Bold indicates the best median per group. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
         )
 
         create_metric_table(
@@ -441,7 +465,7 @@ if __name__ == "__main__":
             "comp_time",
             os.path.join(latex_output_path, "main_table_time.tex"),
             include_hard_dist=True,
-            caption="Mean computation times in seconds (median in parentheses) across distribution groups. Bold indicates the fastest mean per group. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
+            caption="Mean computation times in seconds across distribution groups.",
         )
 
         # --- Appendix tables are still generated as before ---

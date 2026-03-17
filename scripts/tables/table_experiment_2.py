@@ -80,7 +80,7 @@ def generate_latex_file(csv_path, output_path):
     with open(output_path, "w") as f:
         # Suggested caption as LaTeX comment
         f.write(
-            "% Suggested caption: Experiment 2 results on real-world datasets. LSCV scores (lower is better), mean heldout density with median in parentheses (higher is better), computation time, and fallback rate. Bold indicates the best value per dataset. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
+            "% Suggested caption: Experiment 2 results on real-world datasets. LSCV scores (lower is better), mean heldout density with median in parentheses (higher is better; bold indicates best median), computation time, and fallback rate. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
         )
         # Write the table content (no begin/end table, no caption)
         f.write(r"\begin{tabular}{lcccccc}" + "\n")
@@ -93,11 +93,10 @@ def generate_latex_file(csv_path, output_path):
         for dataset in datasets:
             subset = df[df["dataset"] == dataset].copy()
 
-            # Find best LSCV score (min) and Time (min) for bolding
+            # Find best LSCV score (min) for bolding
             best_lscv = subset["lscv_score"].min()
-            best_time = subset["comp_time_sec"].min()
 
-            # Find best heldout density (max is best)
+            # Find best heldout density (max is best) - use median
             if has_folds:
                 ds_fold_stats = (
                     fold_stats.loc[dataset]
@@ -105,7 +104,7 @@ def generate_latex_file(csv_path, output_path):
                     else None
                 )
                 best_density = (
-                    ds_fold_stats["mean"].max() if ds_fold_stats is not None else None
+                    ds_fold_stats["median"].max() if ds_fold_stats is not None else None
                 )
             else:
                 ds_fold_stats = None
@@ -144,9 +143,9 @@ def generate_latex_file(csv_path, output_path):
                 if ds_fold_stats is not None and row["method"] in ds_fold_stats.index:
                     d_mean = ds_fold_stats.loc[row["method"], "mean"]
                     d_median = ds_fold_stats.loc[row["method"], "median"]
-                    # Bold if best mean density
-                    if best_density is not None and abs(d_mean - best_density) < 1e-9:
-                        density_str = f"\\textbf{{{d_mean:.3f}}} ({d_median:.3f})"
+                    # Bold entire entry if best median density
+                    if best_density is not None and abs(d_median - best_density) < 1e-9:
+                        density_str = f"\\textbf{{{d_mean:.3f} ({d_median:.3f})}}"
                     else:
                         density_str = f"{d_mean:.3f} ({d_median:.3f})"
                     # Asterisks for non-reference
@@ -157,11 +156,9 @@ def generate_latex_file(csv_path, output_path):
                 else:
                     density_str = "-"
 
-                # Time (Bold if best)
+                # Time
                 time_val = row["comp_time_sec"]
                 time_str = format_time(time_val)
-                if abs(time_val - best_time) < 1e-6:
-                    time_str = f"\\textbf{{{time_str}}}"
 
                 # Fallback Rate Logic
                 if row["method"] == "BETA_ROT":

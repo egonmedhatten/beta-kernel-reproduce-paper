@@ -156,7 +156,7 @@ def generate_appendix_tables(csv_path, output_dir):
     d2_path = os.path.join(output_dir, "table_d2_loglikelihood.tex")
     with open(d2_path, "w") as f:
         f.write(
-            "% Suggested caption: Mean log-likelihood (median in parentheses) from cross-validated held-out folds. Higher is better. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
+            "% Suggested caption: Mean log-likelihood (median in parentheses) from cross-validated held-out folds. Higher is better. Bold indicates best median per dataset. Significance of Wilcoxon signed-rank tests vs.\\ the reference method: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
         )
         f.write(r"\begin{tabular}{llc}" + "\n")
         f.write(r"\hline" + "\n")
@@ -183,9 +183,9 @@ def generate_appendix_tables(csv_path, output_dir):
             else:
                 fold_stats = None
 
-            # Best Log-Likelihood (Max is best) - use mean from fold data if available
+            # Best Log-Likelihood (Max is best) - use median from fold data
             if fold_stats is not None and not fold_stats.empty:
-                best_ll = fold_stats["mean"].max()
+                best_ll = fold_stats["median"].max()
             else:
                 best_ll = subset["log_likelihood"].max()
 
@@ -200,10 +200,12 @@ def generate_appendix_tables(csv_path, output_dir):
                 if fold_stats is not None and method_name in fold_stats.index:
                     ll_mean = fold_stats.loc[method_name, "mean"]
                     ll_median = fold_stats.loc[method_name, "median"]
-                    mean_str = format_value(
-                        ll_mean, best_ll, is_min_best=False, decimals=2
-                    )
-                    ll_str = f"{mean_str} ({ll_median:.2f})"
+                    # Bold entire entry if best median
+                    is_best = abs(ll_median - best_ll) < 1e-9
+                    if is_best:
+                        ll_str = f"\\textbf{{{ll_mean:.2f} ({ll_median:.2f})}}"
+                    else:
+                        ll_str = f"{ll_mean:.2f} ({ll_median:.2f})"
                 else:
                     ll_val = row["log_likelihood"]
                     ll_str = format_value(

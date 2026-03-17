@@ -75,7 +75,7 @@ def main():
         # 1. Compute means and medians
         means = {m: dist_data[f"{m}_lscv"].mean() for m in MODELS}
         medians = {m: dist_data[f"{m}_lscv"].median() for m in MODELS}
-        best_mean = min(means.values())
+        best_median = min(medians.values())
 
         # 2. Compute p-values for non-reference models vs MODEL_D
         pvals = {}
@@ -90,12 +90,13 @@ def main():
         # 3. Format LSCV rows as mean (median) with bolding and asterisks
         for m in MODELS:
             mean_str = f"{means[m]:.4f}"
-            if abs(means[m] - best_mean) < 1e-9:
-                mean_str = f"\\textbf{{{mean_str}}}"
             median_str = f"{medians[m]:.4f}"
             stars = significance_stars(pvals[m]) if m != "MODEL_D" else ""
+            cell = f"{mean_str} ({median_str})"
+            if abs(medians[m] - best_median) < 1e-9:
+                cell = f"\\textbf{{{cell}}}"
             metrics_dict[f"{MODEL_NAMES[m]} LSCV"].append(
-                f"{mean_str} ({median_str}){stars}"
+                f"{cell}{stars}"
             )
 
         # 4. Format Win Rates
@@ -122,7 +123,7 @@ def main():
     print("\n--- LaTeX Table Output (For Supplementary Material) ---")
     # Generate the LaTeX string using pandas 3.0+ Styler
     latex_table = df_out.style.to_latex(
-        caption="Ablation study of fallback heuristic components across 6,000 trials per distribution. Displaying mean LSCV scores with median in parentheses (lower is better), win rates, and significance of Wilcoxon signed-rank tests comparing the proposed rule against simpler parameterizations. Significance levels: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
+        caption="Ablation study of fallback heuristic components across 6,000 trials per distribution. Displaying mean LSCV scores with median in parentheses (lower is better; bold indicates best median), win rates, and significance of Wilcoxon signed-rank tests comparing the proposed rule against simpler parameterizations. Significance levels: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.",
         label="tab:ablation_study_aggregated",
         hrules=True,
     )
@@ -150,7 +151,7 @@ def main():
     try:
         with open(TABLES_DIR / "ablation_table.tex", "w") as f:
             f.write(
-                "% Suggested caption: Ablation study of fallback heuristic components across 6,000 trials per distribution. Mean LSCV scores (median in parentheses); lower is better. Win rates of the proposed rule. Significance of Wilcoxon signed-rank tests: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
+                "% Suggested caption: Ablation study of fallback heuristic components across 6,000 trials per distribution. Mean LSCV scores (median in parentheses); lower is better. Bold indicates the best median per distribution. Win rates of the proposed rule. Significance of Wilcoxon signed-rank tests: $^{*}p<0.05$, $^{**}p<0.01$, $^{***}p<0.001$.\n"
             )
             f.write(latex_tabular)
         print(
