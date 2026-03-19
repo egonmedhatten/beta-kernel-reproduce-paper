@@ -95,9 +95,7 @@ def main():
             cell = f"{mean_str} ({median_str})"
             if abs(medians[m] - best_median) < 1e-9:
                 cell = f"\\textbf{{{cell}}}"
-            metrics_dict[f"{MODEL_NAMES[m]} LSCV"].append(
-                f"{cell}{stars}"
-            )
+            metrics_dict[f"{MODEL_NAMES[m]} LSCV"].append(f"{cell}{stars}")
 
         # 4. Format Win Rates
         for m in ["MODEL_A", "MODEL_B", "MODEL_C"]:

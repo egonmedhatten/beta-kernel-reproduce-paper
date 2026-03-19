@@ -335,5 +335,3 @@ if __name__ == "__main__":
             include_hard_dist=True,
             caption="Mean computation times in seconds across distribution groups.",
         )
-
-
