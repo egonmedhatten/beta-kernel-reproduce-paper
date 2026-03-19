@@ -587,94 +587,6 @@ def plot_integral_error_vs_n(df_long, dist_order, output_file, emphasis_config):
     plt.close(g.fig)
 
 
-def plot_integral_error_vs_h(df_long, dist_order, output_file, emphasis_config):
-    """
-    Plots the selected bandwidth (h) vs. Sample Size (N) for
-    the proposed rule and all oracle-based methods.
-    This plot *only* uses the "nice" distributions.
-    """
-    print(
-        f"Generating integral error comparison plot (Beta kernel vs h): {output_file}..."
-    )
-
-    methods_to_plot = [
-        "Beta (Ref)",
-        "Beta (Oracle)",
-        "Beta (ISE)",
-        "Beta (LSCV)",
-    ]
-    df_methods_filtered = df_long[df_long["Method"].isin(methods_to_plot)].copy()
-
-    df_filtered = (
-        df_methods_filtered.copy()
-    )  # [df_methods_filtered['dist_type'] == 'nice'].copy()
-    nice_dist_order = [d for d in dist_order if d in df_filtered["dist_name"].unique()]
-
-    df_agg = (
-        df_filtered.groupby(["dist_name", "n", "Method"])
-        .mean(numeric_only=True)
-        .reset_index()
-    )
-
-    col_wrap_val = 3
-    if len(nice_dist_order) <= 3:
-        col_wrap_val = len(nice_dist_order)
-    elif len(nice_dist_order) == 4:
-        col_wrap_val = 2
-
-    _panel_h = FIGURE_WIDTH_FULL / col_wrap_val / 0.9
-    g = sns.relplot(
-        data=df_agg,
-        kind="line",
-        x="h",
-        y="integral_error",
-        hue="Method",
-        style="Method",
-        col="dist_name",
-        col_wrap=col_wrap_val,
-        col_order=nice_dist_order,
-        height=_panel_h,
-        aspect=0.9,
-        facet_kws={"sharey": False, "despine": True},
-        legend="full",
-        lw=1.8,
-        palette=get_color_map(),
-        style_order=get_method_order(),
-        dashes=get_seaborn_dashes(),
-        markers=get_seaborn_markers(),
-    )
-
-    g.set(xscale="log", yscale="log", xlabel="Bandwidth ($h$)", ylabel="")
-    g.fig.supylabel("Mean Integral Error")
-
-    g.set_titles(template="{col_name}")
-    if SHOW_SUPTITLE:
-        g.fig.suptitle("Integral error of Beta estimate")
-
-    if emphasis_config["do_emphasis"]:
-        add_emphasis_to_plot(
-            g=g,
-            df_agg=df_agg,
-            y_col_name="integral_error",
-            x_col_name="h",
-            label_to_emphasize=emphasis_config["label"],
-            width=emphasis_config["width"],
-        )
-
-    sns.move_legend(
-        g,
-        "lower center",
-        bbox_to_anchor=(0.5, -0.22),
-        ncol=3,
-        frameon=False,
-        title=None,
-    )
-    g.fig.tight_layout(rect=[0, 0, 1, 0.97 if SHOW_SUPTITLE else 1])
-
-    g.savefig(output_file, bbox_inches="tight")
-    plt.close(g.fig)
-
-
 def main():
     """
     Main function to run the analysis.
@@ -689,7 +601,6 @@ def main():
     OUTPUT_TIME_PLOT = f"{OUTPUT_DIR}/Comp_Time_vs_N.pdf"
     OUTPUT_BW_PLOT = f"{OUTPUT_DIR}/Bandwidth_vs_N_NiceDists.pdf"
     OUTPUT_INTEGRAL_PLOT = f"{OUTPUT_DIR}/IntegralError_vs_N.pdf"
-    OUTPUT_INTEGRAL_VS_H_PLOT = f"{OUTPUT_DIR}/IntegralError_vs_H.pdf"
 
     # --- Emphasis Configuration ---
     EMPHASIZE_METHOD = True
@@ -712,9 +623,6 @@ def main():
         plot_integral_error_vs_n(
             df_long.copy(), dist_order, OUTPUT_INTEGRAL_PLOT, emphasis_config
         )
-        plot_integral_error_vs_h(
-            df_long.copy(), dist_order, OUTPUT_INTEGRAL_VS_H_PLOT, emphasis_config
-        )
 
         print(f"\nAll plots generated successfully:")
         print(f"- {OUTPUT_LSCV_PLOT}")
@@ -722,7 +630,6 @@ def main():
         print(f"- {OUTPUT_TIME_PLOT}")
         print(f"- {OUTPUT_BW_PLOT}")
         print(f"- {OUTPUT_INTEGRAL_PLOT}")
-        print(f"- {OUTPUT_INTEGRAL_VS_H_PLOT}")
     else:
         print("Script failed because data could not be loaded.")
 

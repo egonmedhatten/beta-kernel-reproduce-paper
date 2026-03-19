@@ -20,7 +20,6 @@ SCRIPTS = [
     # --- Tables ---
     ("Experiment 1 tables", "scripts/tables/tables_experiment_1.py"),
     ("Experiment 2 table", "scripts/tables/table_experiment_2.py"),
-    ("Experiment 2 appendix tables", "scripts/tables/tables_experiment_2_appendix.py"),
     ("Ablation study table", "scripts/tables/table_ablation.py"),
     # --- Figures ---
     ("Experiment 1 figures", "scripts/plot/plot_experiment_1.py"),
